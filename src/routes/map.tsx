@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useOrders } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
 import type { Order } from "@/lib/domain";
-import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/map")({
   head: () => ({
