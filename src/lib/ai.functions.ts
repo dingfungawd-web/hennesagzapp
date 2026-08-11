@@ -23,7 +23,7 @@ export const analyzeScreenshot = createServerFn({ method: "POST" })
             role: "user",
             content: [
               { type: "image_url", image_url: { url: data.imageDataUrl } },
-              { type: "text", text: "請從呢張截圖提取訂單資料，只輸出 JSON。" },
+              { type: "text", text: "请从这张截图提取订单资料，只输出 JSON，所有文字用简体中文。" },
             ],
           },
         ],
@@ -54,11 +54,11 @@ export const suggestAddress = createServerFn({ method: "POST" })
     try {
       const content = await callGateway({
         messages: [
-          { role: "system", content: "你係廣佛地區地址補全助手，只輸出 JSON。" },
+          { role: "system", content: "你是广佛地区地址补全助手，只输出 JSON，所有文字必须用简体中文。" },
           {
             role: "user",
             content: `用戶輸入咗一個可能唔完整嘅地址：「${data.rawAddress}」
-請補全成標準完整地址（省市區 + 街道/鎮 + 小區/大廈 + 棟室），最多列 3 個可能。
+請補全成標準完整地址（省市區 + 街道/鎮 + 小區/大廈 + 棟室），最多列 3 個可能。所有輸出文字必須為簡體中文。
 只輸出 JSON：{"suggestions":[{"address":"...","confidence":"high|medium|low","reason":"..."}]}`,
           },
         ],
