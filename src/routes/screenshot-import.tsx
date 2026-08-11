@@ -148,28 +148,43 @@ function ScreenshotImportPage() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("orders").insert(
-      targets.map((i) => ({
-        order_no: i.order.orderNo || null,
-        customer_name: i.order.customerName,
-        customer_phone: i.order.customerPhone || null,
-        raw_address: i.order.rawAddress,
-        order_content: i.order.orderContent || null,
-        measure_date: i.order.measureDate || null,
-        notes: i.order.notes || null,
-      })),
-    );
-    setSaving(false);
+    const { data: inserted, error } = await supabase
+      .from("orders")
+      .insert(
+        targets.map((i) => ({
+          order_no: i.order.orderNo || null,
+          customer_name: i.order.customerName,
+          customer_phone: i.order.customerPhone || null,
+          raw_address: i.order.rawAddress,
+          order_content: i.order.orderContent || null,
+          measure_date: i.order.measureDate || null,
+          notes: i.order.notes || null,
+        })),
+      )
+      .select("id, raw_address");
     if (error) {
+      setSaving(false);
       toast.error("儲存失敗：" + error.message);
       return;
     }
     setItems((prev) =>
       prev.map((i) => (targets.some((t) => t.id === i.id) ? { ...i, status: "saved" } : i)),
     );
-    toast.success(`已建立 ${targets.length} 張訂單`);
+    toast.success(`已建立 ${targets.length} 張訂單，正在自動解析地址…`);
     qc.invalidateQueries({ queryKey: ["orders"] });
+
+    const summary = await autoGeocodeOrders(
+      (inserted ?? []).map((o) => ({ id: o.id, address: o.raw_address })),
+    );
+    setSaving(false);
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    if (!summary.configured) toast.error("未設定高德 API Key，地址未解析");
+    else
+      toast.success(
+        `地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失敗 ${summary.failed}` : ""}`,
+      );
   };
+
 
   const updateOrder = (id: string, next: Partial<ExtractedOrder>) =>
     setItems((prev) =>
