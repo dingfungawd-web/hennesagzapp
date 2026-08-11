@@ -241,21 +241,13 @@ function ClusterPage() {
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>到達時段</Label>
-              <Select value={time} onValueChange={setTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder="未指定" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64">
-                  <SelectItem value="none">未指定</SelectItem>
-                  {TIME_OPTIONS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>到達時段（起 — 迄）</Label>
+              <TimeRangeSelect
+                value={time === "none" ? null : time}
+                onChange={(v) => setTime(v ?? "none")}
+              />
             </div>
+
             <div className="space-y-1.5">
               <Label>負責隊伍</Label>
               <Select value={teamId} onValueChange={setTeamId}>
