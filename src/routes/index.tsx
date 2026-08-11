@@ -293,7 +293,7 @@ function OrdersPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">安裝日期</Label>
                         <Input
@@ -311,30 +311,16 @@ function OrdersPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">到達時段</Label>
-                        <Select
-                          value={o.install_time ?? "none"}
-                          onValueChange={(v) =>
-                            updateOrder.mutate({
-                              id: o.id,
-                              patch: { install_time: v === "none" ? null : v },
-                            })
+                        <Label className="text-xs text-muted-foreground">到達時段（起 — 迄）</Label>
+                        <TimeRangeSelect
+                          value={o.install_time}
+                          onChange={(v) =>
+                            updateOrder.mutate({ id: o.id, patch: { install_time: v } })
                           }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="未指定" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-64">
-                            <SelectItem value="none">未指定</SelectItem>
-                            {TIME_OPTIONS.map((t) => (
-                              <SelectItem key={t.value} value={t.value}>
-                                {t.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
                     </div>
+
 
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">負責隊伍</Label>

@@ -143,27 +143,15 @@ function SchedulePage() {
                       <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                         {o.raw_address}
                       </p>
-                      <Select
-                        value={o.install_time ?? "none"}
-                        onValueChange={(v) =>
-                          updateOrder.mutate({
-                            id: o.id,
-                            patch: { install_time: v === "none" ? null : v },
-                          })
+                      <TimeRangeSelect
+                        className="mt-2"
+                        compact
+                        value={o.install_time}
+                        onChange={(v) =>
+                          updateOrder.mutate({ id: o.id, patch: { install_time: v } })
                         }
-                      >
-                        <SelectTrigger className="mt-2 h-8 text-xs">
-                          <SelectValue placeholder="選到達時段" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-64">
-                          <SelectItem value="none">未指定時段</SelectItem>
-                          {TIME_OPTIONS.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>
-                              {t.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
+
                     </div>
                   ))}
                   {list.length === 0 && (
