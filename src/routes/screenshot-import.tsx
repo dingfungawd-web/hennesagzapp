@@ -49,7 +49,7 @@ type Item = {
   name: string;
   preview: string;
   status: Status;
-  error?: string;
+  error?: string | undefined;
   order: ExtractedOrder;
 };
 
