@@ -264,7 +264,9 @@ function OrdersPage() {
                   </Badge>
                 </span>
                 <p className="tabular text-sm text-muted-foreground">
-                  {o.install_date ? `${o.install_date}${o.install_time ? ` ${o.install_time}` : ""}` : "—"}
+                  {o.install_date
+                    ? `${o.install_date} ${formatTimeRange(o.install_time)}`.trim()
+                    : "—"}
                 </p>
                 <ChevronDown
                   className={cn(
