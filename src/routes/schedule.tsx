@@ -134,8 +134,9 @@ function SchedulePage() {
       }
     >
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        <div className="space-y-2">
         {view === "month" && (
-          <div className="hidden grid-cols-7 gap-3 text-center text-xs text-muted-foreground md:grid">
+          <div className="hidden grid-cols-7 gap-2 text-center text-xs text-muted-foreground md:grid">
             {WEEKDAYS.map((w) => (
               <span key={w}>週{w}</span>
             ))}
@@ -155,23 +156,57 @@ function SchedulePage() {
             const key = ymd(d);
             const list = byDay.get(key) ?? [];
             const isToday = key === ymd(new Date());
+            const outside = view === "month" && d.getMonth() !== anchor.getMonth();
             return (
               <div
                 key={key}
                 className={cn(
-                  "min-h-40 rounded-lg border bg-card p-3",
+                  "rounded-lg border bg-card",
+                  view === "month" ? "min-h-24 p-2" : "min-h-40 p-3",
                   isToday ? "border-primary/60" : "border-border",
+                  outside && "opacity-45",
                 )}
               >
                 <div className="mb-2 flex items-baseline justify-between">
                   <p className={cn("text-sm font-medium", isToday && "text-primary")}>
                     {d.getMonth() + 1}/{d.getDate()}
-                    <span className="ml-1.5 text-xs text-muted-foreground">
-                      週{WEEKDAYS[(d.getDay() + 6) % 7]}
-                    </span>
+                    {view !== "month" && (
+                      <span className="ml-1.5 text-xs text-muted-foreground">
+                        週{WEEKDAYS[(d.getDay() + 6) % 7]}
+                      </span>
+                    )}
                   </p>
-                  <span className="tabular text-xs text-muted-foreground">{list.length}</span>
+                  <span className="tabular text-xs text-muted-foreground">{list.length || ""}</span>
                 </div>
+                {view === "month" ? (
+                  <div className="space-y-1">
+                    {list.slice(0, 4).map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => {
+                          setDraftId(o.id);
+                          setDraftDate(o.install_date ?? key);
+                          setDraftTime(o.install_time ?? null);
+                          setDraftTeam(o.team_id ?? null);
+                        }}
+                        className="block w-full truncate rounded bg-surface px-1.5 py-1 text-left text-[11px]"
+                      >
+                        {o.install_time ? (
+                          <span className="tabular mr-1 text-primary">
+                            {o.install_time.split("-")[0]}
+                          </span>
+                        ) : null}
+                        {o.customer_name}
+                      </button>
+                    ))}
+                    {list.length > 4 && (
+                      <p className="px-1 text-[11px] text-muted-foreground">
+                        +{list.length - 4} 張
+                      </p>
+                    )}
+                  </div>
+                ) : (
                 <div className="space-y-2">
                   {list.map((o) => (
                     <div key={o.id} className="rounded border border-border bg-surface p-2">
@@ -219,10 +254,13 @@ function SchedulePage() {
                     <p className="py-4 text-center text-xs text-muted-foreground">未有安排</p>
                   )}
                 </div>
+                )}
               </div>
             );
           })}
         </div>
+        </div>
+
 
         <aside className="rounded-lg border border-border bg-card p-3">
           <p className="mb-2 text-sm font-medium">未排程訂單（{unscheduled.length}）</p>
