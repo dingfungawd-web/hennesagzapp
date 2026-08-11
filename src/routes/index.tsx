@@ -322,7 +322,28 @@ function OrdersPage() {
                           }
                         />
                       </div>
+                      {(o.install_date || o.status === "scheduled") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() =>
+                            updateOrder.mutate({
+                              id: o.id,
+                              patch: {
+                                install_date: null,
+                                install_time: null,
+                                team_id: null,
+                                status: "unscheduled",
+                              },
+                            })
+                          }
+                        >
+                          取消約期
+                        </Button>
+                      )}
                     </div>
+
 
 
                     <div className="space-y-1.5">
