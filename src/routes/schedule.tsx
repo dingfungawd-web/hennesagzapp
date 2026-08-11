@@ -178,17 +178,18 @@ function SchedulePage() {
                       size="sm"
                       variant="outline"
                       className="h-7 flex-1 text-xs"
-                      onClick={() =>
-                        updateOrder.mutate({
-                          id: o.id,
-                          patch: { install_date: ymd(d), status: "scheduled" },
-                        })
-                      }
+                      onClick={() => {
+                        setDraftId(o.id);
+                        setDraftDate(ymd(d));
+                        setDraftTime(null);
+                        setDraftTeam(o.team_id ?? null);
+                      }}
                     >
                       {d.getMonth() + 1}/{d.getDate()}
                     </Button>
                   ))}
                 </div>
+
               </div>
             ))}
             {unscheduled.length === 0 && (
