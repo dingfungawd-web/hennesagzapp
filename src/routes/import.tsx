@@ -77,9 +77,15 @@ function ImportPage() {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { cellDates: true });
     const sheetName = wb.SheetNames[0];
-    if (!sheetName) return toast.error("Excel 冇工作表");
+    if (!sheetName) {
+      toast.error("Excel 冇工作表");
+      return;
+    }
     const sheet = wb.Sheets[sheetName];
-    if (!sheet) return toast.error("讀取工作表失敗");
+    if (!sheet) {
+      toast.error("讀取工作表失敗");
+      return;
+    }
     const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
     const parsed: Row[] = [];
     for (const raw of json) {
@@ -112,7 +118,12 @@ function ImportPage() {
     setSaving(true);
     const { data: batch, error: batchErr } = await supabase
       .from("import_batches")
-      .insert({ file_name: fileName, total_rows: rows.length, status: "processing" })
+      .insert({
+        batch_id: crypto.randomUUID(),
+        file_name: fileName,
+        total_count: rows.length,
+        status: "processing",
+      })
       .select()
       .single();
     if (batchErr || !batch) {
@@ -127,8 +138,8 @@ function ImportPage() {
       .from("import_batches")
       .update({
         status: error ? "failed" : "completed",
-        success_rows: error ? 0 : rows.length,
-        failed_rows: error ? rows.length : 0,
+        success_count: error ? 0 : rows.length,
+        failed_count: error ? rows.length : 0,
       })
       .eq("id", batch.id);
     setSaving(false);
@@ -229,7 +240,7 @@ function ImportPage() {
             >
               <span className="truncate">{b.file_name}</span>
               <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                {b.success_rows}/{b.total_rows} 成功
+                {b.success_count}/{b.total_count} 成功
                 <Badge variant="outline">{b.status}</Badge>
               </span>
             </div>
