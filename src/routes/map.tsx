@@ -1,13 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Flag, MapPin, Navigation, Route as RouteIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CalendarPlus, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useOrders } from "@/lib/queries";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TimeRangeSelect } from "@/components/TimeRangeSelect";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrders, useTeams } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
-import type { Order } from "@/lib/domain";
+import { formatTimeRange, STATUS_LABEL, type Order } from "@/lib/domain";
 
 
 export const Route = createFileRoute("/map")({
