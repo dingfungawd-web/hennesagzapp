@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { analyzeScreenshot, type ExtractedOrder } from "@/lib/ai.functions";
 import { fileToImageDataUrl } from "@/lib/image";
+import { autoGeocodeOrders } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/screenshot-import")({
