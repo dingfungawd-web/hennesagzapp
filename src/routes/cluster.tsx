@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useOrders, useTeams } from "@/lib/queries";
+import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
+import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { haversine, STATUS_LABEL, TIME_OPTIONS, type Order } from "@/lib/domain";
 import { useQueryClient } from "@tanstack/react-query";
