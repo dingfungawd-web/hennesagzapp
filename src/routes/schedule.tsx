@@ -92,16 +92,22 @@ function SchedulePage() {
   const unscheduled = orders.filter((o) => !o.install_date);
   const shift = (n: number) => {
     const d = new Date(anchor);
-    d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
+    if (view === "month") d.setMonth(d.getMonth() + n);
+    else d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
     setAnchor(d);
   };
 
   const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name;
+  const viewLabel = view === "week" ? "週視圖" : view === "day" ? "日視圖" : "月視圖";
 
   return (
     <AppShell
       title="排程日曆"
-      subtitle={`${view === "week" ? "週視圖" : "日視圖"} · ${unscheduled.length} 張未排程`}
+      subtitle={
+        view === "month"
+          ? `${anchor.getFullYear()} 年 ${anchor.getMonth() + 1} 月 · ${unscheduled.length} 張未排程`
+          : `${viewLabel} · ${unscheduled.length} 張未排程`
+      }
       actions={
         <>
           <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="上一頁">
@@ -114,11 +120,12 @@ function SchedulePage() {
           <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="下一頁">
             <ChevronRight className="size-4" />
           </Button>
-          <Select value={view} onValueChange={(v) => setView(v as "week" | "day")}>
+          <Select value={view} onValueChange={(v) => setView(v as "week" | "day" | "month")}>
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="month">月視圖</SelectItem>
               <SelectItem value="week">週視圖</SelectItem>
               <SelectItem value="day">日視圖</SelectItem>
             </SelectContent>
@@ -127,10 +134,21 @@ function SchedulePage() {
       }
     >
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        {view === "month" && (
+          <div className="hidden grid-cols-7 gap-3 text-center text-xs text-muted-foreground md:grid">
+            {WEEKDAYS.map((w) => (
+              <span key={w}>週{w}</span>
+            ))}
+          </div>
+        )}
         <div
           className={cn(
             "grid gap-3",
-            view === "week" ? "grid-cols-1 md:grid-cols-4 xl:grid-cols-7" : "grid-cols-1",
+            view === "week"
+              ? "grid-cols-1 md:grid-cols-4 xl:grid-cols-7"
+              : view === "month"
+                ? "grid-cols-1 md:grid-cols-7 md:gap-2"
+                : "grid-cols-1",
           )}
         >
           {days.map((d) => {
