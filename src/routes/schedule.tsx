@@ -58,6 +58,15 @@ function SchedulePage() {
 
   const days = useMemo(() => {
     if (view === "day") return [new Date(anchor)];
+    if (view === "month") {
+      const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      const start = startOfWeek(first);
+      return Array.from({ length: 42 }, (_, i) => {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        return d;
+      });
+    }
     const start = startOfWeek(anchor);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
