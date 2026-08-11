@@ -24,7 +24,7 @@ import {
 import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
-import { haversine, STATUS_LABEL, TIME_OPTIONS, type Order } from "@/lib/domain";
+import { haversine, STATUS_LABEL, type Order } from "@/lib/domain";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -280,5 +280,32 @@ function ClusterPage() {
         </DialogContent>
       </Dialog>
     </AppShell>
+  );
+}
+
+function RowSchedule({ order, className }: { order: Order; className?: string }) {
+  const updateOrder = useUpdateOrder();
+  return (
+    <div className={cn("grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]", className)}>
+      <Input
+        type="date"
+        className="h-8 text-xs"
+        value={order.install_date ?? ""}
+        onChange={(e) =>
+          updateOrder.mutate({
+            id: order.id,
+            patch: {
+              install_date: e.target.value || null,
+              status: e.target.value ? "scheduled" : "unscheduled",
+            },
+          })
+        }
+      />
+      <TimeRangeSelect
+        compact
+        value={order.install_time}
+        onChange={(v) => updateOrder.mutate({ id: order.id, patch: { install_time: v } })}
+      />
+    </div>
   );
 }
