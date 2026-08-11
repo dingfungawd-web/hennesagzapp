@@ -347,7 +347,74 @@ function MapPage() {
         </div>
 
       </div>
+
+      <Dialog open={!!draft} onOpenChange={(v) => !v && setDraft(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>確定排期</DialogTitle>
+          </DialogHeader>
+          {draft && (
+            <div className="space-y-3">
+              <div className="rounded border border-border bg-surface p-3 text-sm">
+                <p className="font-medium">{draft.customer_name}</p>
+                <p className="text-xs text-muted-foreground">{draft.raw_address}</p>
+                {draft.customer_phone && (
+                  <a
+                    href={`tel:${draft.customer_phone}`}
+                    className="mt-1 inline-flex items-center gap-1 font-display text-xs text-primary hover:underline"
+                  >
+                    <Phone className="size-3" />
+                    {draft.customer_phone}
+                  </a>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">安裝日期</p>
+                <Input type="date" value={dDate} onChange={(e) => setDDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">到達時段</p>
+                <TimeRangeSelect value={dTime} onChange={setDTime} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">安裝隊伍</p>
+                <Select value={dTeam} onValueChange={setDTeam}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="未分配" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">未分配</SelectItem>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <span className="flex items-center gap-2">
+                          <Users className="size-3.5" />
+                          {t.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:justify-between">
+            {draft?.status === "scheduled" ? (
+              <Button variant="outline" onClick={() => draft && cancelSchedule(draft)}>
+                <X className="size-4" />
+                取消約期
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button onClick={saveSchedule} disabled={savingSchedule}>
+              <CalendarPlus className="size-4" />
+              確定排期
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
+
   );
 }
 
