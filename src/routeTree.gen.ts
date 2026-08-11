@@ -16,6 +16,7 @@ import { Route as ImportRouteImport } from './routes/import'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as ScreenshotImportRouteImport } from './routes/screenshot-import'
+import { Route as TechniciansRouteImport } from './routes/technicians'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const ScreenshotImportRoute = ScreenshotImportRouteImport.update({
   path: '/screenshot-import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TechniciansRoute = TechniciansRouteImport.update({
+  id: '/technicians',
+  path: '/technicians',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/map': typeof MapRoute
   '/schedule': typeof ScheduleRoute
   '/screenshot-import': typeof ScreenshotImportRoute
+  '/technicians': typeof TechniciansRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/map': typeof MapRoute
   '/schedule': typeof ScheduleRoute
   '/screenshot-import': typeof ScreenshotImportRoute
+  '/technicians': typeof TechniciansRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/map': typeof MapRoute
   '/schedule': typeof ScheduleRoute
   '/screenshot-import': typeof ScreenshotImportRoute
+  '/technicians': typeof TechniciansRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/map'
     | '/schedule'
     | '/screenshot-import'
+    | '/technicians'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/map'
     | '/schedule'
     | '/screenshot-import'
+    | '/technicians'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/map'
     | '/schedule'
     | '/screenshot-import'
+    | '/technicians'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   MapRoute: typeof MapRoute
   ScheduleRoute: typeof ScheduleRoute
   ScreenshotImportRoute: typeof ScreenshotImportRoute
+  TechniciansRoute: typeof TechniciansRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScreenshotImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/technicians': {
+      id: '/technicians'
+      path: '/technicians'
+      fullPath: '/technicians'
+      preLoaderRoute: typeof TechniciansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,17 +203,8 @@ const rootRouteChildren: RootRouteChildren = {
   MapRoute: MapRoute,
   ScheduleRoute: ScheduleRoute,
   ScreenshotImportRoute: ScreenshotImportRoute,
+  TechniciansRoute: TechniciansRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

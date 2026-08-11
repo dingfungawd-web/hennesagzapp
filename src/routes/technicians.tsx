@@ -51,7 +51,7 @@ function TechniciansPage() {
   const { data: teams = [] } = useTeams();
   const [techOpen, setTechOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
-  const [techForm, setTechForm] = useState({ name: "", phone: "", skill_level: "normal" });
+  const [techForm, setTechForm] = useState({ name: "", phone: "" });
   const [teamForm, setTeamForm] = useState({
     name: "",
     team_type: "standard",
@@ -64,27 +64,38 @@ function TechniciansPage() {
   };
 
   const addTech = async () => {
-    if (!techForm.name) return toast.error("請輸入師傅姓名");
+    if (!techForm.name) {
+      toast.error("請輸入師傅姓名");
+      return;
+    }
     const { error } = await supabase.from("technicians").insert({
       name: techForm.name,
       phone: techForm.phone || null,
-      skill_level: techForm.skill_level,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("已新增師傅");
-    setTechForm({ name: "", phone: "", skill_level: "normal" });
+    setTechForm({ name: "", phone: "" });
     setTechOpen(false);
     refresh();
   };
 
   const addTeam = async () => {
-    if (!teamForm.name) return toast.error("請輸入隊伍名稱");
+    if (!teamForm.name) {
+      toast.error("請輸入隊伍名稱");
+      return;
+    }
     const { error } = await supabase.from("teams").insert({
       name: teamForm.name,
       team_type: teamForm.team_type,
       member_ids: teamForm.member_ids,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("已建立隊伍");
     setTeamForm({ name: "", team_type: "standard", member_ids: [] });
     setTeamOpen(false);
@@ -94,14 +105,20 @@ function TechniciansPage() {
   const removeTech = async (id: string) => {
     if (!confirm("確定刪除呢位師傅？")) return;
     const { error } = await supabase.from("technicians").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     refresh();
   };
 
   const removeTeam = async (id: string) => {
     if (!confirm("確定刪除呢隊？")) return;
     const { error } = await supabase.from("teams").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     refresh();
   };
 
@@ -142,7 +159,7 @@ function TechniciansPage() {
                   <p className="tabular text-xs text-muted-foreground">{t.phone ?? "—"}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="outline">{t.skill_level === "senior" ? "資深" : "一般"}</Badge>
+                  <Badge variant="outline">{t.is_active ? "在職" : "停用"}</Badge>
                   <button
                     className="text-muted-foreground hover:text-destructive"
                     onClick={() => removeTech(t.id)}
@@ -209,21 +226,6 @@ function TechniciansPage() {
                 value={techForm.phone}
                 onChange={(e) => setTechForm({ ...techForm, phone: e.target.value })}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>技能等級</Label>
-              <Select
-                value={techForm.skill_level}
-                onValueChange={(v) => setTechForm({ ...techForm, skill_level: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">一般</SelectItem>
-                  <SelectItem value="senior">資深</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>
