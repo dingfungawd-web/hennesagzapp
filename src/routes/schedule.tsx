@@ -46,7 +46,7 @@ export const Route = createFileRoute("/schedule")({
 
 function SchedulePage() {
   const [anchor, setAnchor] = useState(() => new Date());
-  const [view, setView] = useState<"week" | "day">("week");
+  const [view, setView] = useState<"week" | "day" | "month">("week");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftDate, setDraftDate] = useState<string>("");
   const [draftTime, setDraftTime] = useState<string | null>(null);
@@ -58,6 +58,15 @@ function SchedulePage() {
 
   const days = useMemo(() => {
     if (view === "day") return [new Date(anchor)];
+    if (view === "month") {
+      const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      const start = startOfWeek(first);
+      return Array.from({ length: 42 }, (_, i) => {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        return d;
+      });
+    }
     const start = startOfWeek(anchor);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
@@ -83,16 +92,22 @@ function SchedulePage() {
   const unscheduled = orders.filter((o) => !o.install_date);
   const shift = (n: number) => {
     const d = new Date(anchor);
-    d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
+    if (view === "month") d.setMonth(d.getMonth() + n);
+    else d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
     setAnchor(d);
   };
 
   const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name;
+  const viewLabel = view === "week" ? "週視圖" : view === "day" ? "日視圖" : "月視圖";
 
   return (
     <AppShell
       title="排程日曆"
-      subtitle={`${view === "week" ? "週視圖" : "日視圖"} · ${unscheduled.length} 張未排程`}
+      subtitle={
+        view === "month"
+          ? `${anchor.getFullYear()} 年 ${anchor.getMonth() + 1} 月 · ${unscheduled.length} 張未排程`
+          : `${viewLabel} · ${unscheduled.length} 張未排程`
+      }
       actions={
         <>
           <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="上一頁">
@@ -105,11 +120,12 @@ function SchedulePage() {
           <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="下一頁">
             <ChevronRight className="size-4" />
           </Button>
-          <Select value={view} onValueChange={(v) => setView(v as "week" | "day")}>
+          <Select value={view} onValueChange={(v) => setView(v as "week" | "day" | "month")}>
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="month">月視圖</SelectItem>
               <SelectItem value="week">週視圖</SelectItem>
               <SelectItem value="day">日視圖</SelectItem>
             </SelectContent>
@@ -118,33 +134,79 @@ function SchedulePage() {
       }
     >
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        <div className="space-y-2">
+        {view === "month" && (
+          <div className="hidden grid-cols-7 gap-2 text-center text-xs text-muted-foreground md:grid">
+            {WEEKDAYS.map((w) => (
+              <span key={w}>週{w}</span>
+            ))}
+          </div>
+        )}
         <div
           className={cn(
             "grid gap-3",
-            view === "week" ? "grid-cols-1 md:grid-cols-4 xl:grid-cols-7" : "grid-cols-1",
+            view === "week"
+              ? "grid-cols-1 md:grid-cols-4 xl:grid-cols-7"
+              : view === "month"
+                ? "grid-cols-1 md:grid-cols-7 md:gap-2"
+                : "grid-cols-1",
           )}
         >
           {days.map((d) => {
             const key = ymd(d);
             const list = byDay.get(key) ?? [];
             const isToday = key === ymd(new Date());
+            const outside = view === "month" && d.getMonth() !== anchor.getMonth();
             return (
               <div
                 key={key}
                 className={cn(
-                  "min-h-40 rounded-lg border bg-card p-3",
+                  "rounded-lg border bg-card",
+                  view === "month" ? "min-h-24 p-2" : "min-h-40 p-3",
                   isToday ? "border-primary/60" : "border-border",
+                  outside && "opacity-45",
                 )}
               >
                 <div className="mb-2 flex items-baseline justify-between">
                   <p className={cn("text-sm font-medium", isToday && "text-primary")}>
                     {d.getMonth() + 1}/{d.getDate()}
-                    <span className="ml-1.5 text-xs text-muted-foreground">
-                      週{WEEKDAYS[(d.getDay() + 6) % 7]}
-                    </span>
+                    {view !== "month" && (
+                      <span className="ml-1.5 text-xs text-muted-foreground">
+                        週{WEEKDAYS[(d.getDay() + 6) % 7]}
+                      </span>
+                    )}
                   </p>
-                  <span className="tabular text-xs text-muted-foreground">{list.length}</span>
+                  <span className="tabular text-xs text-muted-foreground">{list.length || ""}</span>
                 </div>
+                {view === "month" ? (
+                  <div className="space-y-1">
+                    {list.slice(0, 4).map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => {
+                          setDraftId(o.id);
+                          setDraftDate(o.install_date ?? key);
+                          setDraftTime(o.install_time ?? null);
+                          setDraftTeam(o.team_id ?? null);
+                        }}
+                        className="block w-full truncate rounded bg-surface px-1.5 py-1 text-left text-[11px]"
+                      >
+                        {o.install_time ? (
+                          <span className="tabular mr-1 text-primary">
+                            {o.install_time.split("-")[0]}
+                          </span>
+                        ) : null}
+                        {o.customer_name}
+                      </button>
+                    ))}
+                    {list.length > 4 && (
+                      <p className="px-1 text-[11px] text-muted-foreground">
+                        +{list.length - 4} 張
+                      </p>
+                    )}
+                  </div>
+                ) : (
                 <div className="space-y-2">
                   {list.map((o) => (
                     <div key={o.id} className="rounded border border-border bg-surface p-2">
@@ -192,10 +254,13 @@ function SchedulePage() {
                     <p className="py-4 text-center text-xs text-muted-foreground">未有安排</p>
                   )}
                 </div>
+                )}
               </div>
             );
           })}
         </div>
+        </div>
+
 
         <aside className="rounded-lg border border-border bg-card p-3">
           <p className="mb-2 text-sm font-medium">未排程訂單（{unscheduled.length}）</p>
