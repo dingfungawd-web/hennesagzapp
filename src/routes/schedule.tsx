@@ -157,6 +157,24 @@ function SchedulePage() {
                           updateOrder.mutate({ id: o.id, patch: { install_time: v } })
                         }
                       />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-1 h-7 w-full text-xs text-muted-foreground"
+                        onClick={() =>
+                          updateOrder.mutate({
+                            id: o.id,
+                            patch: {
+                              install_date: null,
+                              install_time: null,
+                              team_id: null,
+                              status: "unscheduled",
+                            },
+                          })
+                        }
+                      >
+                        取消約期
+                      </Button>
 
                     </div>
                   ))}
