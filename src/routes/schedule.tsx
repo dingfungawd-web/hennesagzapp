@@ -46,7 +46,7 @@ export const Route = createFileRoute("/schedule")({
 
 function SchedulePage() {
   const [anchor, setAnchor] = useState(() => new Date());
-  const [view, setView] = useState<"week" | "day">("week");
+  const [view, setView] = useState<"week" | "day" | "month">("week");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftDate, setDraftDate] = useState<string>("");
   const [draftTime, setDraftTime] = useState<string | null>(null);
