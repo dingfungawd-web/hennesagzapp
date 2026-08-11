@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Users } from "lucide-react";
+import { ChevronRight, MapPin, Sparkles, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -24,8 +23,9 @@ import {
 } from "@/components/ui/select";
 import { useOrders, useTeams } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
-import { haversine, TIME_OPTIONS, type Order } from "@/lib/domain";
+import { haversine, STATUS_LABEL, TIME_OPTIONS, type Order } from "@/lib/domain";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/cluster")({
   head: () => ({
@@ -33,13 +33,15 @@ export const Route = createFileRoute("/cluster")({
       { title: "智能配對 — 漢紗排程調度台" },
       {
         name: "description",
-        content: "用地理距離自動將鄰近訂單分組，一鍵套用同日排程、時段與隊伍。",
+        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，一鍵套用同日排程。",
       },
       { property: "og:title", content: "智能配對 — 漢紗排程調度台" },
       {
         property: "og:description",
-        content: "用地理距離自動將鄰近訂單分組，一鍵套用同日排程、時段與隊伍。",
+        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，一鍵套用同日排程。",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ClusterPage,
@@ -47,8 +49,7 @@ export const Route = createFileRoute("/cluster")({
 
 function ClusterPage() {
   const qc = useQueryClient();
-  const [radius, setRadius] = useState(3);
-  const [maxSize, setMaxSize] = useState(4);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [applyFor, setApplyFor] = useState<Order[] | null>(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("none");
@@ -58,33 +59,40 @@ function ClusterPage() {
   const { data: orders = [] } = useOrders();
   const { data: teams = [] } = useTeams();
 
-  const clusters = useMemo(() => {
-    const pool = orders.filter((o) => o.latitude && o.longitude && o.status !== "completed");
-    const used = new Set<string>();
-    const groups: Order[][] = [];
-    for (const seed of pool) {
-      if (used.has(seed.id)) continue;
-      const group = [seed];
-      used.add(seed.id);
-      for (const other of pool) {
-        if (used.has(other.id) || group.length >= maxSize) continue;
-        const d = haversine(
-          Number(seed.latitude),
-          Number(seed.longitude),
-          Number(other.latitude),
-          Number(other.longitude),
-        );
-        if (d <= radius) {
-          group.push(other);
-          used.add(other.id);
-        }
-      }
-      groups.push(group);
-    }
-    return groups.sort((a, b) => b.length - a.length);
-  }, [orders, radius, maxSize]);
+  const unscheduled = useMemo(
+    () => orders.filter((o) => o.status === "unscheduled"),
+    [orders],
+  );
 
-  const multi = clusters.filter((g) => g.length > 1);
+  const openApply = (list: Order[]) => {
+    setApplyFor(list);
+    setDate(list[0]?.install_date ?? "");
+    setTime(list[0]?.install_time ?? "none");
+    setTeamId(list[0]?.team_id ?? "none");
+  };
+
+  const nearestOf = (o: Order) => {
+    if (o.latitude == null || o.longitude == null) return [];
+    return orders
+      .filter(
+        (x) =>
+          x.id !== o.id &&
+          x.status !== "completed" &&
+          x.latitude != null &&
+          x.longitude != null,
+      )
+      .map((x) => ({
+        order: x,
+        dist: haversine(
+          Number(o.latitude),
+          Number(o.longitude),
+          Number(x.latitude),
+          Number(x.longitude),
+        ),
+      }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 10);
+  };
 
   const applySchedule = async () => {
     if (!applyFor) return;
@@ -116,70 +124,103 @@ function ClusterPage() {
   };
 
   return (
-    <AppShell
-      title="智能配對"
-      subtitle={`半徑 ${radius} km 內共找到 ${multi.length} 組可合併訂單`}
-    >
-      <div className="mb-4 grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">聚合半徑：{radius} km</Label>
-          <Slider
-            value={[radius]}
-            min={1}
-            max={15}
-            step={1}
-            onValueChange={(v) => setRadius(v[0] ?? 3)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">每組上限：{maxSize} 單</Label>
-          <Slider
-            value={[maxSize]}
-            min={2}
-            max={8}
-            step={1}
-            onValueChange={(v) => setMaxSize(v[0] ?? 4)}
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {multi.map((group, i) => (
-          <div key={group[0]?.id ?? i} className="rounded-lg border border-border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-display text-sm font-semibold">
-                第 {i + 1} 組
-                <Badge variant="outline" className="ml-2 border-primary/30 bg-primary/10 text-primary">
-                  {group.length} 單
-                </Badge>
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setApplyFor(group);
-                  setDate(group[0]?.install_date ?? "");
-                  setTime(group[0]?.install_time ?? "none");
-                  setTeamId(group[0]?.team_id ?? "none");
-                }}
+    <AppShell title="智能配對" subtitle={`共 ${unscheduled.length} 張未約期訂單`}>
+      <div className="space-y-2">
+        {unscheduled.map((o) => {
+          const open = expanded === o.id;
+          const near = open ? nearestOf(o) : [];
+          return (
+            <div key={o.id} className="rounded-lg border border-border bg-card">
+              <button
+                type="button"
+                onClick={() => setExpanded(open ? null : o.id)}
+                className="flex w-full items-center gap-3 p-3 text-left"
               >
-                <Sparkles className="size-4" />
-                套用排程
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {group.map((o) => (
-                <div key={o.id} className="rounded border border-border bg-surface p-2">
-                  <p className="truncate text-sm font-medium">{o.customer_name}</p>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{o.raw_address}</p>
+                <ChevronRight
+                  className={cn("size-4 shrink-0 transition-transform", open && "rotate-90")}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {o.customer_name}
+                    {o.order_no && (
+                      <span className="ml-2 text-xs text-muted-foreground">#{o.order_no}</span>
+                    )}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{o.raw_address}</p>
                 </div>
-              ))}
+                {o.latitude == null && (
+                  <Badge variant="outline" className="shrink-0 text-xs">
+                    未定位
+                  </Badge>
+                )}
+              </button>
+
+              {open && (
+                <div className="border-t border-border p-3">
+                  {o.latitude == null ? (
+                    <p className="text-sm text-muted-foreground">
+                      呢張單未有經緯度，請先喺訂單頁做地址解析。
+                    </p>
+                  ) : near.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">附近未有其他未完成訂單。</p>
+                  ) : (
+                    <>
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          最接近嘅 {near.length} 張未完成訂單
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openApply([o, ...near.map((n) => n.order)])}
+                        >
+                          <Sparkles className="size-4" />
+                          全部套用排程
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {near.map(({ order: n, dist }) => (
+                          <div
+                            key={n.id}
+                            className="flex items-center gap-3 rounded border border-border bg-surface p-2"
+                          >
+                            <MapPin className="size-4 shrink-0 text-primary" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {n.customer_name}
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {STATUS_LABEL[n.status] ?? n.status}
+                                </Badge>
+                                {n.install_date && (
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    {n.install_date}
+                                    {n.install_time ? ` ${n.install_time}` : ""}
+                                  </span>
+                                )}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {n.raw_address}
+                              </p>
+                            </div>
+                            <span className="shrink-0 font-display text-xs text-primary">
+                              {dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}
+                            </span>
+                            <Button size="sm" variant="ghost" onClick={() => openApply([o, n])}>
+                              一齊排
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
-        {multi.length === 0 && (
+          );
+        })}
+        {unscheduled.length === 0 && (
           <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-            未找到可配對嘅訂單，可以放大聚合半徑再試。
+            暫時未有未約期訂單。
           </p>
         )}
       </div>
