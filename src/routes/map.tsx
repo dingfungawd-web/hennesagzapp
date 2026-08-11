@@ -276,9 +276,28 @@ function MapPage() {
                 className="rounded p-2 transition-colors hover:bg-accent/40"
               >
                 <button className="w-full text-left" onClick={() => focus(o)}>
-                  <p className="truncate text-sm font-medium">{o.customer_name}</p>
+                  <p className="truncate text-sm font-medium">
+                    {o.customer_name}
+                    <Badge variant="outline" className="ml-2 text-[10px]">
+                      {STATUS_LABEL[o.status] ?? o.status}
+                    </Badge>
+                  </p>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{o.raw_address}</p>
                 </button>
+                {o.customer_phone && (
+                  <a
+                    href={`tel:${o.customer_phone}`}
+                    className="mt-0.5 inline-flex items-center gap-1 font-display text-xs text-primary hover:underline"
+                  >
+                    <Phone className="size-3" />
+                    {o.customer_phone}
+                  </a>
+                )}
+                {o.install_date && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {o.install_date} {formatTimeRange(o.install_time)}
+                  </p>
+                )}
                 <div className="mt-1.5 flex gap-1.5">
                   <Button
                     size="sm"
@@ -297,6 +316,15 @@ function MapPage() {
                   >
                     <Flag className="size-3" />
                     設終點
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => openSchedule(o)}
+                  >
+                    <CalendarPlus className="size-3" />
+                    {o.status === "scheduled" ? "改期" : "排期"}
                   </Button>
                 </div>
               </div>
