@@ -69,8 +69,64 @@ function MapPage() {
   const [routeText, setRouteText] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
   const { data: orders = [] } = useOrders();
+  const { data: teams = [] } = useTeams();
+  const qc = useQueryClient();
+
+  const [draft, setDraft] = useState<Order | null>(null);
+  const [dDate, setDDate] = useState("");
+  const [dTime, setDTime] = useState<string | null>(null);
+  const [dTeam, setDTeam] = useState("none");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  const openSchedule = (o: Order) => {
+    setDraft(o);
+    setDDate(o.install_date ?? "");
+    setDTime(o.install_time ?? null);
+    setDTeam(o.team_id ?? "none");
+  };
+
+  const saveSchedule = async () => {
+    if (!draft) return;
+    if (!dDate) {
+      toast.error("請揀安裝日期");
+      return;
+    }
+    setSavingSchedule(true);
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        install_date: dDate,
+        install_time: dTime,
+        team_id: dTeam === "none" ? null : dTeam,
+        status: "scheduled",
+      })
+      .eq("id", draft.id);
+    setSavingSchedule(false);
+    if (error) {
+      toast.error("排期失敗");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    toast.success("已確定排期");
+    setDraft(null);
+  };
+
+  const cancelSchedule = async (o: Order) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ install_date: null, install_time: null, team_id: null, status: "unscheduled" })
+      .eq("id", o.id);
+    if (error) {
+      toast.error("取消失敗");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    toast.success("已取消約期");
+    setDraft(null);
+  };
 
   const located = orders.filter((o) => o.latitude && o.longitude);
+
 
   useEffect(() => {
     let cancelled = false;
