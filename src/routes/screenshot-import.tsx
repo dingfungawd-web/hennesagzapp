@@ -96,7 +96,10 @@ function ScreenshotImportPage() {
     setLoadingFiles(false);
     const first = added[0];
     if (first && !selectedId) setSelectedId(first.id);
-    if (added.length) toast.success(`已加入 ${added.length} 張截圖`);
+    if (added.length) {
+      toast.success(`已加入 ${added.length} 張截圖，開始辨識…`);
+      void runQueue(added);
+    }
   };
 
   const analyzeOne = async (item: Item) => {
@@ -115,12 +118,8 @@ function ScreenshotImportPage() {
     }
   };
 
-  const analyzeAll = async () => {
-    const targets = items.filter((i) => i.status === "pending" || i.status === "error");
-    if (targets.length === 0) {
-      toast.info("冇待辨識嘅截圖");
-      return;
-    }
+  const runQueue = async (targets: Item[]) => {
+    if (targets.length === 0) return;
     setRunning(true);
     let ok = 0;
     for (const item of targets) {
@@ -129,6 +128,16 @@ function ScreenshotImportPage() {
     setRunning(false);
     toast.success(`辨識完成：成功 ${ok} / ${targets.length}`);
   };
+
+  const analyzeAll = async () => {
+    const targets = items.filter((i) => i.status === "pending" || i.status === "error");
+    if (targets.length === 0) {
+      toast.info("冇待辨識嘅截圖");
+      return;
+    }
+    await runQueue(targets);
+  };
+
 
   const saveAll = async () => {
     const targets = items.filter(
