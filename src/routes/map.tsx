@@ -74,6 +74,10 @@ function MapPage() {
         mapStyle: "amap://styles/dark",
       });
       setReady(true);
+      setTimeout(() => mapRef.current?.resize?.(), 200);
+      const onResize = () => mapRef.current?.resize?.();
+      window.addEventListener("resize", onResize);
+
     })();
     return () => {
       cancelled = true;
