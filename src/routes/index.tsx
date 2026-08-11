@@ -33,7 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrders, useTeams, useDeleteOrder, useUpdateOrder } from "@/lib/queries";
-import { GEO_LABEL, STATUS_LABEL, TIME_OPTIONS, type Order } from "@/lib/domain";
+import { GEO_LABEL, STATUS_LABEL, formatTimeRange, type Order } from "@/lib/domain";
+import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { geocodeAddresses } from "@/lib/amap.functions";
 import { suggestAddress } from "@/lib/ai.functions";
 import { cn } from "@/lib/utils";

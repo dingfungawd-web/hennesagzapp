@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
-import { TIME_OPTIONS, WEEKDAYS, startOfWeek, ymd } from "@/lib/domain";
+import { WEEKDAYS, startOfWeek, ymd } from "@/lib/domain";
+import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/schedule")({
