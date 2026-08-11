@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, MapPin, Sparkles, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, Sparkles, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
+import { useOrders, useTeams } from "@/lib/queries";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
-import { haversine, STATUS_LABEL, type Order } from "@/lib/domain";
+import { formatTimeRange, haversine, STATUS_LABEL, type Order } from "@/lib/domain";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -160,7 +161,7 @@ function ClusterPage() {
                 <div className="border-t border-border p-3">
                   <div className="mb-3 rounded border border-border bg-surface p-2">
                     <p className="mb-2 text-xs text-muted-foreground">呢張單嘅排期</p>
-                    <RowSchedule order={o} />
+                    <RowSchedule order={o} onEdit={(x) => openApply([x])} />
                   </div>
 
                   {o.latitude == null ? (
@@ -212,7 +213,7 @@ function ClusterPage() {
                                 一齊排
                               </Button>
                             </div>
-                            <RowSchedule order={n} className="mt-2" />
+                            <RowSchedule order={n} className="mt-2" onEdit={(x) => openApply([x])} />
                           </div>
                         ))}
                       </div>
@@ -283,29 +284,27 @@ function ClusterPage() {
   );
 }
 
-function RowSchedule({ order, className }: { order: Order; className?: string }) {
-  const updateOrder = useUpdateOrder();
+function RowSchedule({
+  order,
+  className,
+  onEdit,
+}: {
+  order: Order;
+  className?: string;
+  onEdit: (o: Order) => void;
+}) {
   return (
-    <div className={cn("grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]", className)}>
-      <Input
-        type="date"
-        className="h-8 text-xs"
-        value={order.install_date ?? ""}
-        onChange={(e) =>
-          updateOrder.mutate({
-            id: order.id,
-            patch: {
-              install_date: e.target.value || null,
-              status: e.target.value ? "scheduled" : "unscheduled",
-            },
-          })
-        }
-      />
-      <TimeRangeSelect
-        compact
-        value={order.install_time}
-        onChange={(v) => updateOrder.mutate({ id: order.id, patch: { install_time: v } })}
-      />
+    <div className={cn("flex items-center gap-2", className)}>
+      <span className="tabular text-xs text-muted-foreground">
+        {order.install_date
+          ? `${order.install_date}${order.install_time ? ` · ${formatTimeRange(order.install_time)}` : ""}`
+          : "未約期"}
+      </span>
+      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(order)}>
+        <CalendarDays className="size-3.5" />
+        {order.install_date ? "改期" : "排期"}
+      </Button>
     </div>
   );
 }
+
