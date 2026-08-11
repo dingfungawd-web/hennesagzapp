@@ -198,6 +198,8 @@ function MapPage() {
           `<div style="max-width:260px;padding:8px 10px;border-radius:8px;background:#111827;color:#f8fafc;border:1px solid #334155;font-size:12px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.4)">
              <div style="font-weight:600;margin-bottom:2px">${escapeHtml(o.customer_name ?? "")}</div>
              <div style="color:#cbd5e1">${escapeHtml(o.raw_address ?? "")}</div>
+             ${o.customer_phone ? `<div style="color:#fbbf24;margin-top:2px">☎ ${escapeHtml(o.customer_phone)}</div>` : ""}
+             ${o.install_date ? `<div style="color:#94a3b8;margin-top:2px">${escapeHtml(o.install_date)} ${escapeHtml(formatTimeRange(o.install_time))}</div>` : ""}
            </div>`,
         );
         infoRef.current.open(mapRef.current, marker.getPosition());
