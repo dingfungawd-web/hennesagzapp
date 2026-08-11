@@ -433,7 +433,9 @@ function RoutePoint({
         {label}
       </Badge>
       <span className="min-w-0 flex-1 truncate text-xs">
-        {order ? `${order.customer_name} · ${order.raw_address}` : "未設定"}
+        {order
+          ? `${order.customer_name} · ${order.raw_address}${order.customer_phone ? ` · ${order.customer_phone}` : ""}`
+          : "未設定"}
       </span>
       {order && (
         <button className="text-xs text-muted-foreground hover:text-foreground" onClick={onClear}>
