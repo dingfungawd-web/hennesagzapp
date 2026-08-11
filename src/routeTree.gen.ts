@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ClusterRouteImport } from './routes/cluster'
+import { Route as ImportRouteImport } from './routes/import'
+import { Route as MapRouteImport } from './routes/map'
+import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as ScreenshotImportRouteImport } from './routes/screenshot-import'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClusterRoute = ClusterRouteImport.update({
+  id: '/cluster',
+  path: '/cluster',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportRoute = ImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduleRoute = ScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScreenshotImportRoute = ScreenshotImportRouteImport.update({
+  id: '/screenshot-import',
+  path: '/screenshot-import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cluster': typeof ClusterRoute
+  '/import': typeof ImportRoute
+  '/map': typeof MapRoute
+  '/schedule': typeof ScheduleRoute
+  '/screenshot-import': typeof ScreenshotImportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cluster': typeof ClusterRoute
+  '/import': typeof ImportRoute
+  '/map': typeof MapRoute
+  '/schedule': typeof ScheduleRoute
+  '/screenshot-import': typeof ScreenshotImportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cluster': typeof ClusterRoute
+  '/import': typeof ImportRoute
+  '/map': typeof MapRoute
+  '/schedule': typeof ScheduleRoute
+  '/screenshot-import': typeof ScreenshotImportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/cluster'
+    | '/import'
+    | '/map'
+    | '/schedule'
+    | '/screenshot-import'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/cluster'
+    | '/import'
+    | '/map'
+    | '/schedule'
+    | '/screenshot-import'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/cluster'
+    | '/import'
+    | '/map'
+    | '/schedule'
+    | '/screenshot-import'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  ClusterRoute: typeof ClusterRoute
+  ImportRoute: typeof ImportRoute
+  MapRoute: typeof MapRoute
+  ScheduleRoute: typeof ScheduleRoute
+  ScreenshotImportRoute: typeof ScreenshotImportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +130,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cluster': {
+      id: '/cluster'
+      path: '/cluster'
+      fullPath: '/cluster'
+      preLoaderRoute: typeof ClusterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import': {
+      id: '/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof ImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schedule': {
+      id: '/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/screenshot-import': {
+      id: '/screenshot-import'
+      path: '/screenshot-import'
+      fullPath: '/screenshot-import'
+      preLoaderRoute: typeof ScreenshotImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  ClusterRoute: ClusterRoute,
+  ImportRoute: ImportRoute,
+  MapRoute: MapRoute,
+  ScheduleRoute: ScheduleRoute,
+  ScreenshotImportRoute: ScreenshotImportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
