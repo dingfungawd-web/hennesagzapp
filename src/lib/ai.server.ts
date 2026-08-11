@@ -11,7 +11,8 @@ export const SCREENSHOT_PROMPT = `你是一個專門從紗窗公司訂單 App �
 1. 地址要完整，包含城市（廣州市/佛山市）、區、小區、棟號、室號
 2. customerName 只要姓名（例如「陳先生」），唔好包電話
 3. 睇唔到嘅欄位就返回 null
-4. 日期統一 YYYY-MM-DD`;
+4. 日期統一 YYYY-MM-DD
+5. 所有文字輸出必須為【中文簡體字】（简体中文），即使截圖用繁體字或粵語，都要轉換成簡體中文再輸出（地址、姓名、訂單內容、備註全部一樣）`;
 
 export async function callGateway(body: Record<string, unknown>) {
   const apiKey = process.env["LOVABLE_API_KEY"];
