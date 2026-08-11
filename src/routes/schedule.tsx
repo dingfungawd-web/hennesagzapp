@@ -221,6 +221,71 @@ function SchedulePage() {
           </div>
         </aside>
       </div>
+
+      <Dialog open={!!draftId} onOpenChange={(v) => !v && setDraftId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>安排約期</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">安裝日期</Label>
+              <Input
+                type="date"
+                value={draftDate}
+                onChange={(e) => setDraftDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">到達時段（起 — 迄）</Label>
+              <TimeRangeSelect value={draftTime} onChange={setDraftTime} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">負責隊伍</Label>
+              <Select
+                value={draftTeam ?? "none"}
+                onValueChange={(v) => setDraftTeam(v === "none" ? null : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="未分配" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">未分配</SelectItem>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDraftId(null)}>
+              取消
+            </Button>
+            <Button
+              disabled={!draftDate}
+              onClick={() => {
+                if (!draftId || !draftDate) return;
+                updateOrder.mutate({
+                  id: draftId,
+                  patch: {
+                    install_date: draftDate,
+                    install_time: draftTime,
+                    team_id: draftTeam,
+                    status: "scheduled",
+                  },
+                });
+                setDraftId(null);
+              }}
+            >
+              確認約期
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
+
   );
 }
