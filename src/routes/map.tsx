@@ -199,7 +199,7 @@ function MapPage() {
         </aside>
 
         <div className="relative h-[70vh] min-h-[420px] w-full overflow-hidden rounded-lg border border-border bg-surface">
-          <div ref={mapEl} className="absolute inset-0" />
+          <div ref={mapEl} style={{ width: "100%", height: "100%" }} />
           {!ready && (
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-sm text-muted-foreground">地圖載入中…</span>
