@@ -131,9 +131,10 @@ function ImportPage() {
       toast.error("建立匯入批次失敗");
       return;
     }
-    const { error } = await supabase
+    const { data: inserted, error } = await supabase
       .from("orders")
-      .insert(rows.map((r) => ({ ...r, import_batch_id: batch.id })));
+      .insert(rows.map((r) => ({ ...r, import_batch_id: batch.id })))
+      .select("id, raw_address");
     await supabase
       .from("import_batches")
       .update({
@@ -147,12 +148,20 @@ function ImportPage() {
       toast.error("匯入失敗：" + error.message);
       return;
     }
-    toast.success(`已匯入 ${rows.length} 張訂單`);
+    toast.success(`已匯入 ${rows.length} 張訂單，正在自動解析地址…`);
     setRows([]);
     setFileName("");
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["import_batches"] });
+
+    const summary = await autoGeocodeOrders(
+      (inserted ?? []).map((o) => ({ id: o.id, address: o.raw_address })),
+    );
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    if (!summary.configured) toast.error("未設定高德 API Key，地址未解析");
+    else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失敗 ${summary.failed}` : ""}`);
   };
+
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
