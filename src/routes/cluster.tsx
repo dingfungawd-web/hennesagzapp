@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCheck, ChevronRight, CopyCheck, MapPin, Users } from "lucide-react";
+import { CheckCheck, ChevronRight, CopyCheck, MapPin, Phone, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -171,6 +171,15 @@ function ClusterPage() {
               </Badge>
             </p>
             <p className="truncate text-xs text-muted-foreground">{o.raw_address}</p>
+            {o.customer_phone && (
+              <a
+                href={`tel:${o.customer_phone}`}
+                className="mt-0.5 inline-flex items-center gap-1 font-display text-xs text-primary hover:underline"
+              >
+                <Phone className="size-3" />
+                {o.customer_phone}
+              </a>
+            )}
           </div>
           {dist != null && (
             <span className="shrink-0 font-display text-xs text-primary">
@@ -234,7 +243,12 @@ function ClusterPage() {
                       <span className="ml-2 text-xs text-muted-foreground">#{o.order_no}</span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{o.raw_address}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {o.raw_address}
+                    {o.customer_phone && (
+                      <span className="ml-2 font-display text-primary">{o.customer_phone}</span>
+                    )}
+                  </p>
                 </div>
                 {o.latitude == null && (
                   <Badge variant="outline" className="shrink-0 text-xs">

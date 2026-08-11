@@ -1,13 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Flag, MapPin, Navigation, Route as RouteIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CalendarPlus, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useOrders } from "@/lib/queries";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TimeRangeSelect } from "@/components/TimeRangeSelect";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrders, useTeams } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
-import type { Order } from "@/lib/domain";
+import { formatTimeRange, STATUS_LABEL, type Order } from "@/lib/domain";
 
 
 export const Route = createFileRoute("/map")({
@@ -51,8 +69,64 @@ function MapPage() {
   const [routeText, setRouteText] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
   const { data: orders = [] } = useOrders();
+  const { data: teams = [] } = useTeams();
+  const qc = useQueryClient();
+
+  const [draft, setDraft] = useState<Order | null>(null);
+  const [dDate, setDDate] = useState("");
+  const [dTime, setDTime] = useState<string | null>(null);
+  const [dTeam, setDTeam] = useState("none");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  const openSchedule = (o: Order) => {
+    setDraft(o);
+    setDDate(o.install_date ?? "");
+    setDTime(o.install_time ?? null);
+    setDTeam(o.team_id ?? "none");
+  };
+
+  const saveSchedule = async () => {
+    if (!draft) return;
+    if (!dDate) {
+      toast.error("請揀安裝日期");
+      return;
+    }
+    setSavingSchedule(true);
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        install_date: dDate,
+        install_time: dTime,
+        team_id: dTeam === "none" ? null : dTeam,
+        status: "scheduled",
+      })
+      .eq("id", draft.id);
+    setSavingSchedule(false);
+    if (error) {
+      toast.error("排期失敗");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    toast.success("已確定排期");
+    setDraft(null);
+  };
+
+  const cancelSchedule = async (o: Order) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ install_date: null, install_time: null, team_id: null, status: "unscheduled" })
+      .eq("id", o.id);
+    if (error) {
+      toast.error("取消失敗");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    toast.success("已取消約期");
+    setDraft(null);
+  };
 
   const located = orders.filter((o) => o.latitude && o.longitude);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +198,8 @@ function MapPage() {
           `<div style="max-width:260px;padding:8px 10px;border-radius:8px;background:#111827;color:#f8fafc;border:1px solid #334155;font-size:12px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.4)">
              <div style="font-weight:600;margin-bottom:2px">${escapeHtml(o.customer_name ?? "")}</div>
              <div style="color:#cbd5e1">${escapeHtml(o.raw_address ?? "")}</div>
+             ${o.customer_phone ? `<div style="color:#fbbf24;margin-top:2px">☎ ${escapeHtml(o.customer_phone)}</div>` : ""}
+             ${o.install_date ? `<div style="color:#94a3b8;margin-top:2px">${escapeHtml(o.install_date)} ${escapeHtml(formatTimeRange(o.install_time))}</div>` : ""}
            </div>`,
         );
         infoRef.current.open(mapRef.current, marker.getPosition());
@@ -200,9 +276,28 @@ function MapPage() {
                 className="rounded p-2 transition-colors hover:bg-accent/40"
               >
                 <button className="w-full text-left" onClick={() => focus(o)}>
-                  <p className="truncate text-sm font-medium">{o.customer_name}</p>
+                  <p className="truncate text-sm font-medium">
+                    {o.customer_name}
+                    <Badge variant="outline" className="ml-2 text-[10px]">
+                      {STATUS_LABEL[o.status] ?? o.status}
+                    </Badge>
+                  </p>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{o.raw_address}</p>
                 </button>
+                {o.customer_phone && (
+                  <a
+                    href={`tel:${o.customer_phone}`}
+                    className="mt-0.5 inline-flex items-center gap-1 font-display text-xs text-primary hover:underline"
+                  >
+                    <Phone className="size-3" />
+                    {o.customer_phone}
+                  </a>
+                )}
+                {o.install_date && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {o.install_date} {formatTimeRange(o.install_time)}
+                  </p>
+                )}
                 <div className="mt-1.5 flex gap-1.5">
                   <Button
                     size="sm"
@@ -221,6 +316,15 @@ function MapPage() {
                   >
                     <Flag className="size-3" />
                     設終點
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => openSchedule(o)}
+                  >
+                    <CalendarPlus className="size-3" />
+                    {o.status === "scheduled" ? "改期" : "排期"}
                   </Button>
                 </div>
               </div>
@@ -243,7 +347,74 @@ function MapPage() {
         </div>
 
       </div>
+
+      <Dialog open={!!draft} onOpenChange={(v) => !v && setDraft(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>確定排期</DialogTitle>
+          </DialogHeader>
+          {draft && (
+            <div className="space-y-3">
+              <div className="rounded border border-border bg-surface p-3 text-sm">
+                <p className="font-medium">{draft.customer_name}</p>
+                <p className="text-xs text-muted-foreground">{draft.raw_address}</p>
+                {draft.customer_phone && (
+                  <a
+                    href={`tel:${draft.customer_phone}`}
+                    className="mt-1 inline-flex items-center gap-1 font-display text-xs text-primary hover:underline"
+                  >
+                    <Phone className="size-3" />
+                    {draft.customer_phone}
+                  </a>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">安裝日期</p>
+                <Input type="date" value={dDate} onChange={(e) => setDDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">到達時段</p>
+                <TimeRangeSelect value={dTime} onChange={setDTime} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">安裝隊伍</p>
+                <Select value={dTeam} onValueChange={setDTeam}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="未分配" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">未分配</SelectItem>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <span className="flex items-center gap-2">
+                          <Users className="size-3.5" />
+                          {t.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:justify-between">
+            {draft?.status === "scheduled" ? (
+              <Button variant="outline" onClick={() => draft && cancelSchedule(draft)}>
+                <X className="size-4" />
+                取消約期
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button onClick={saveSchedule} disabled={savingSchedule}>
+              <CalendarPlus className="size-4" />
+              確定排期
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
+
   );
 }
 
@@ -262,7 +433,9 @@ function RoutePoint({
         {label}
       </Badge>
       <span className="min-w-0 flex-1 truncate text-xs">
-        {order ? `${order.customer_name} · ${order.raw_address}` : "未設定"}
+        {order
+          ? `${order.customer_name} · ${order.raw_address}${order.customer_phone ? ` · ${order.customer_phone}` : ""}`
+          : "未設定"}
       </span>
       {order && (
         <button className="text-xs text-muted-foreground hover:text-foreground" onClick={onClear}>
