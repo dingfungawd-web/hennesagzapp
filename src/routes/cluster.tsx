@@ -1,19 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CalendarDays, ChevronRight, MapPin, Sparkles, Users } from "lucide-react";
+import { CheckCheck, ChevronRight, CopyCheck, MapPin, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -24,7 +17,7 @@ import {
 import { useOrders, useTeams } from "@/lib/queries";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
-import { formatTimeRange, haversine, STATUS_LABEL, type Order } from "@/lib/domain";
+import { haversine, STATUS_LABEL, type Order } from "@/lib/domain";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -35,12 +28,12 @@ export const Route = createFileRoute("/cluster")({
       { title: "智能配對 — 漢紗排程調度台" },
       {
         name: "description",
-        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，一鍵套用同日排程。",
+        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，逐張填好再一鍵確認排程。",
       },
       { property: "og:title", content: "智能配對 — 漢紗排程調度台" },
       {
         property: "og:description",
-        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，一鍵套用同日排程。",
+        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，逐張填好再一鍵確認排程。",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -49,39 +42,35 @@ export const Route = createFileRoute("/cluster")({
   component: ClusterPage,
 });
 
+type Draft = { date: string; time: string | null; team: string };
+
+function draftOf(o: Order): Draft {
+  return { date: o.install_date ?? "", time: o.install_time ?? null, team: o.team_id ?? "none" };
+}
+
 function ClusterPage() {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [applyFor, setApplyFor] = useState<Order[] | null>(null);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("none");
-  const [teamId, setTeamId] = useState("none");
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
 
   const { data: orders = [] } = useOrders();
   const { data: teams = [] } = useTeams();
 
-  const unscheduled = useMemo(
-    () => orders.filter((o) => o.status === "unscheduled"),
-    [orders],
+  const list = useMemo(
+    () => orders.filter((o) => o.status === "unscheduled" || o.id === expanded),
+    [orders, expanded],
   );
 
-  const openApply = (list: Order[]) => {
-    setApplyFor(list);
-    setDate(list[0]?.install_date ?? "");
-    setTime(list[0]?.install_time ?? "none");
-    setTeamId(list[0]?.team_id ?? "none");
-  };
+  const unscheduledCount = orders.filter((o) => o.status === "unscheduled").length;
 
   const nearestOf = (o: Order) => {
     if (o.latitude == null || o.longitude == null) return [];
     return orders
       .filter(
         (x) =>
-          x.id !== o.id &&
-          x.status !== "completed" &&
-          x.latitude != null &&
-          x.longitude != null,
+          x.id !== o.id && x.status !== "completed" && x.latitude != null && x.longitude != null,
       )
       .map((x) => ({
         order: x,
@@ -96,46 +85,143 @@ function ClusterPage() {
       .slice(0, 10);
   };
 
-  const applySchedule = async () => {
-    if (!applyFor) return;
-    if (!date) {
-      toast.error("請揀安裝日期");
+  const toggleExpand = (o: Order) => {
+    if (expanded === o.id) {
+      setExpanded(null);
+      setDrafts({});
+      setPicked({});
+      return;
+    }
+    const near = nearestOf(o);
+    const next: Record<string, Draft> = { [o.id]: draftOf(o) };
+    for (const { order } of near) next[order.id] = draftOf(order);
+    setDrafts(next);
+    setPicked({ [o.id]: true });
+    setExpanded(o.id);
+  };
+
+  const patchDraft = (id: string, patch: Partial<Draft>) =>
+    setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? { date: "", time: null, team: "none" }), ...patch } }));
+
+  const pickedIds = Object.keys(picked).filter((id) => picked[id]);
+
+  const copyToPicked = (fromId: string) => {
+    const src = drafts[fromId];
+    if (!src) return;
+    setDrafts((d) => {
+      const next = { ...d };
+      for (const id of pickedIds) next[id] = { ...src };
+      return next;
+    });
+    toast.success(`已複製排期到 ${pickedIds.length} 張訂單`);
+  };
+
+  const confirmAll = async () => {
+    const targets = pickedIds.filter((id) => drafts[id]?.date);
+    if (targets.length === 0) {
+      toast.error("請剔選訂單並填好安裝日期");
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        install_date: date,
-        install_time: time === "none" ? null : time,
-        team_id: teamId === "none" ? null : teamId,
-        status: "scheduled",
-      })
-      .in(
-        "id",
-        applyFor.map((o) => o.id),
-      );
-    setSaving(false);
-    if (error) {
-      toast.error("套用失敗：" + error.message);
-      return;
+    let failed = 0;
+    for (const id of targets) {
+      const d = drafts[id]!;
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          install_date: d.date,
+          install_time: d.time,
+          team_id: d.team === "none" ? null : d.team,
+          status: "scheduled",
+        })
+        .eq("id", id);
+      if (error) failed++;
     }
-    toast.success(`已套用排程到 ${applyFor.length} 張訂單`);
-    setApplyFor(null);
+    setSaving(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
+    if (failed) toast.error(`${failed} 張訂單套用失敗`);
+    else toast.success(`已確認 ${targets.length} 張訂單嘅排程`);
+  };
+
+  const renderRow = (o: Order, dist?: number, isMain = false) => {
+    const d = drafts[o.id] ?? { date: "", time: null, team: "none" };
+    return (
+      <div
+        key={o.id}
+        className={cn(
+          "rounded border p-2",
+          isMain ? "border-primary/50 bg-surface" : "border-border bg-surface",
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={!!picked[o.id]}
+            onCheckedChange={(v) => setPicked((p) => ({ ...p, [o.id]: !!v }))}
+          />
+          {isMain ? (
+            <Badge className="shrink-0 text-[10px]">主體</Badge>
+          ) : (
+            <MapPin className="size-4 shrink-0 text-primary" />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {o.customer_name}
+              <Badge variant="outline" className="ml-2 text-xs">
+                {STATUS_LABEL[o.status] ?? o.status}
+              </Badge>
+            </p>
+            <p className="truncate text-xs text-muted-foreground">{o.raw_address}</p>
+          </div>
+          {dist != null && (
+            <span className="shrink-0 font-display text-xs text-primary">
+              {dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}
+            </span>
+          )}
+        </div>
+        <div className="mt-2 grid gap-2 md:grid-cols-[150px_1fr_150px]">
+          <Input
+            type="date"
+            className="h-8 text-xs"
+            value={d.date}
+            onChange={(e) => patchDraft(o.id, { date: e.target.value })}
+          />
+          <TimeRangeSelect
+            compact
+            value={d.time}
+            onChange={(v) => patchDraft(o.id, { time: v })}
+          />
+          <Select value={d.team} onValueChange={(v) => patchDraft(o.id, { team: v })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="未分配" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">未分配</SelectItem>
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  <span className="flex items-center gap-2">
+                    <Users className="size-3.5" />
+                    {t.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <AppShell title="智能配對" subtitle={`共 ${unscheduled.length} 張未約期訂單`}>
+    <AppShell title="智能配對" subtitle={`共 ${unscheduledCount} 張未約期訂單`}>
       <div className="space-y-2">
-        {unscheduled.map((o) => {
+        {list.map((o) => {
           const open = expanded === o.id;
           const near = open ? nearestOf(o) : [];
           return (
             <div key={o.id} className="rounded-lg border border-border bg-card">
               <button
                 type="button"
-                onClick={() => setExpanded(open ? null : o.id)}
+                onClick={() => toggleExpand(o)}
                 className="flex w-full items-center gap-3 p-3 text-left"
               >
                 <ChevronRight
@@ -159,152 +245,62 @@ function ClusterPage() {
 
               {open && (
                 <div className="border-t border-border p-3">
-                  <div className="mb-3 rounded border border-border bg-surface p-2">
-                    <p className="mb-2 text-xs text-muted-foreground">呢張單嘅排期</p>
-                    <RowSchedule order={o} onEdit={(x) => openApply([x])} />
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      剔選要一齊約嘅訂單，逐張填好日期／時段／隊伍，最後一鍵確認
+                    </p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => copyToPicked(o.id)}>
+                        <CopyCheck className="size-4" />
+                        主體排期套用到已剔
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setPicked(
+                            Object.fromEntries([o.id, ...near.map((n) => n.order.id)].map((id) => [id, true])),
+                          )
+                        }
+                      >
+                        全部剔選
+                      </Button>
+                    </div>
                   </div>
 
-                  {o.latitude == null ? (
-                    <p className="text-sm text-muted-foreground">
-                      呢張單未有經緯度，請先喺訂單頁做地址解析。
-                    </p>
-                  ) : near.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">附近未有其他未完成訂單。</p>
-                  ) : (
-                    <>
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          最接近嘅 {near.length} 張未完成訂單
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openApply([o, ...near.map((n) => n.order)])}
-                        >
-                          <Sparkles className="size-4" />
-                          全部套用排程
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        {near.map(({ order: n, dist }) => (
-                          <div
-                            key={n.id}
-                            className="rounded border border-border bg-surface p-2"
-                          >
-                            <div className="flex items-center gap-3">
-                              <MapPin className="size-4 shrink-0 text-primary" />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">
-                                  {n.customer_name}
-                                  <Badge variant="outline" className="ml-2 text-xs">
-                                    {STATUS_LABEL[n.status] ?? n.status}
-                                  </Badge>
-                                </p>
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {n.raw_address}
-                                </p>
-                              </div>
-                              <span className="shrink-0 font-display text-xs text-primary">
-                                {dist < 1
-                                  ? `${Math.round(dist * 1000)} m`
-                                  : `${dist.toFixed(1)} km`}
-                              </span>
-                              <Button size="sm" variant="ghost" onClick={() => openApply([o, n])}>
-                                一齊排
-                              </Button>
-                            </div>
-                            <RowSchedule order={n} className="mt-2" onEdit={(x) => openApply([x])} />
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                  <div className="space-y-2">
+                    {renderRow(o, undefined, true)}
+                    {o.latitude == null ? (
+                      <p className="text-sm text-muted-foreground">
+                        呢張單未有經緯度，請先喺訂單頁做地址解析。
+                      </p>
+                    ) : near.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">附近未有其他未完成訂單。</p>
+                    ) : (
+                      near.map(({ order: n, dist }) => renderRow(n, dist))
+                    )}
+                  </div>
 
+                  <div className="mt-3 flex items-center justify-end gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      已剔選 {pickedIds.length} 張
+                    </span>
+                    <Button onClick={confirmAll} disabled={saving}>
+                      <CheckCheck className="size-4" />
+                      一鍵確認排程
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
-        {unscheduled.length === 0 && (
+        {list.length === 0 && (
           <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
             暫時未有未約期訂單。
           </p>
         )}
       </div>
-
-      <Dialog open={applyFor !== null} onOpenChange={(v) => !v && setApplyFor(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>套用排程（{applyFor?.length ?? 0} 張訂單）</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>安裝日期 *</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>到達時段（起 — 迄）</Label>
-              <TimeRangeSelect
-                value={time === "none" ? null : time}
-                onChange={(v) => setTime(v ?? "none")}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>負責隊伍</Label>
-              <Select value={teamId} onValueChange={setTeamId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="未分配" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">未分配</SelectItem>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      <span className="flex items-center gap-2">
-                        <Users className="size-3.5" />
-                        {t.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApplyFor(null)}>
-              取消
-            </Button>
-            <Button onClick={applySchedule} disabled={saving}>
-              確認套用
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AppShell>
   );
 }
-
-function RowSchedule({
-  order,
-  className,
-  onEdit,
-}: {
-  order: Order;
-  className?: string;
-  onEdit: (o: Order) => void;
-}) {
-  return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <span className="tabular text-xs text-muted-foreground">
-        {order.install_date
-          ? `${order.install_date}${order.install_time ? ` · ${formatTimeRange(order.install_time)}` : ""}`
-          : "未約期"}
-      </span>
-      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(order)}>
-        <CalendarDays className="size-3.5" />
-        {order.install_date ? "改期" : "排期"}
-      </Button>
-    </div>
-  );
-}
-
