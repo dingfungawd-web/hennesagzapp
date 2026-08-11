@@ -1,0 +1,109 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "登入 — 漢紗排程調度台" },
+      { name: "description", content: "登入漢紗排程調度台，管理紗窗安裝訂單與師傅排程。" },
+      { property: "og:title", content: "登入 — 漢紗排程調度台" },
+      { property: "og:description", content: "登入漢紗排程調度台，管理紗窗安裝訂單與師傅排程。" },
+    ],
+  }),
+  component: AuthPage,
+});
+
+function AuthPage() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/" });
+    });
+  }, [navigate]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate({ to: "/" });
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        toast.success("註冊成功，可以直接登入");
+        setMode("signin");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "登入失敗");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded bg-primary font-display text-base font-bold text-primary-foreground">
+            漢
+          </div>
+          <div>
+            <h1 className="font-display text-xl font-semibold">漢紗調度台</h1>
+            <p className="text-xs text-muted-foreground">安裝排程 · 路線 · 師傅管理</p>
+          </div>
+        </div>
+        <form onSubmit={submit} className="space-y-4 rounded-lg border border-border bg-card p-6">
+          <div className="space-y-2">
+            <Label htmlFor="email">電郵</Label>
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">密碼</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 6 位"
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "處理中…" : mode === "signin" ? "登入" : "建立帳號"}
+          </Button>
+          <button
+            type="button"
+            className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          >
+            {mode === "signin" ? "未有帳號？立即註冊" : "已有帳號？返回登入"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
