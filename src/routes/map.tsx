@@ -35,6 +35,12 @@ declare global {
   }
 }
 
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
+  );
+}
+
 function MapPage() {
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
@@ -84,16 +90,45 @@ function MapPage() {
     };
   }, []);
 
+  const originRef = useRef<Order | null>(null);
+  const destRef = useRef<Order | null>(null);
+  const infoRef = useRef<any>(null);
+  useEffect(() => {
+    originRef.current = origin;
+  }, [origin]);
+  useEffect(() => {
+    destRef.current = dest;
+  }, [dest]);
+
   useEffect(() => {
     if (!ready || !mapRef.current || !window.AMap) return;
     const AMap = window.AMap as any;
     mapRef.current.clearMap();
+    if (!infoRef.current) {
+      infoRef.current = new AMap.InfoWindow({
+        isCustom: true,
+        autoMove: false,
+        offset: new AMap.Pixel(0, -32),
+      });
+    }
     const markers = located.map((o) => {
       const marker = new AMap.Marker({
         position: [Number(o.longitude), Number(o.latitude)],
-        title: `${o.customer_name} · ${o.raw_address}`,
       });
-      marker.on("click", () => setDest(o));
+      marker.on("click", () => {
+        if (!destRef.current) setDest(o);
+        else if (!originRef.current) setOrigin(o);
+      });
+      marker.on("mouseover", () => {
+        infoRef.current.setContent(
+          `<div style="max-width:260px;padding:8px 10px;border-radius:8px;background:#111827;color:#f8fafc;border:1px solid #334155;font-size:12px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.4)">
+             <div style="font-weight:600;margin-bottom:2px">${escapeHtml(o.customer_name ?? "")}</div>
+             <div style="color:#cbd5e1">${escapeHtml(o.raw_address ?? "")}</div>
+           </div>`,
+        );
+        infoRef.current.open(mapRef.current, marker.getPosition());
+      });
+      marker.on("mouseout", () => infoRef.current?.close());
       return marker;
     });
     if (markers.length) {
