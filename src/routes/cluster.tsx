@@ -157,6 +157,11 @@ function ClusterPage() {
 
               {open && (
                 <div className="border-t border-border p-3">
+                  <div className="mb-3 rounded border border-border bg-surface p-2">
+                    <p className="mb-2 text-xs text-muted-foreground">呢張單嘅排期</p>
+                    <RowSchedule order={o} />
+                  </div>
+
                   {o.latitude == null ? (
                     <p className="text-sm text-muted-foreground">
                       呢張單未有經緯度，請先喺訂單頁做地址解析。
@@ -182,37 +187,37 @@ function ClusterPage() {
                         {near.map(({ order: n, dist }) => (
                           <div
                             key={n.id}
-                            className="flex items-center gap-3 rounded border border-border bg-surface p-2"
+                            className="rounded border border-border bg-surface p-2"
                           >
-                            <MapPin className="size-4 shrink-0 text-primary" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium">
-                                {n.customer_name}
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  {STATUS_LABEL[n.status] ?? n.status}
-                                </Badge>
-                                {n.install_date && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    {n.install_date}
-                                    {n.install_time ? ` ${n.install_time}` : ""}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {n.raw_address}
-                              </p>
+                            <div className="flex items-center gap-3">
+                              <MapPin className="size-4 shrink-0 text-primary" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">
+                                  {n.customer_name}
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    {STATUS_LABEL[n.status] ?? n.status}
+                                  </Badge>
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {n.raw_address}
+                                </p>
+                              </div>
+                              <span className="shrink-0 font-display text-xs text-primary">
+                                {dist < 1
+                                  ? `${Math.round(dist * 1000)} m`
+                                  : `${dist.toFixed(1)} km`}
+                              </span>
+                              <Button size="sm" variant="ghost" onClick={() => openApply([o, n])}>
+                                一齊排
+                              </Button>
                             </div>
-                            <span className="shrink-0 font-display text-xs text-primary">
-                              {dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}
-                            </span>
-                            <Button size="sm" variant="ghost" onClick={() => openApply([o, n])}>
-                              一齊排
-                            </Button>
+                            <RowSchedule order={n} className="mt-2" />
                           </div>
                         ))}
                       </div>
                     </>
                   )}
+
                 </div>
               )}
             </div>
