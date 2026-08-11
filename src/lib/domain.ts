@@ -14,6 +14,28 @@ export const TIME_OPTIONS: { value: string; label: string }[] = Array.from(
   },
 );
 
+/** install_time 儲存為 "HH:MM-HH:MM"（舊資料可能只有 "HH:MM"） */
+export function parseTimeRange(value: string | null | undefined): {
+  start: string | null;
+  end: string | null;
+} {
+  if (!value) return { start: null, end: null };
+  const [start, end] = value.split("-");
+  return { start: start?.trim() || null, end: end?.trim() || null };
+}
+
+export function shiftTime(time: string, hours: number) {
+  const [h = "0", m = "00"] = time.split(":");
+  const total = Math.min(23 * 60 + 30, Number(h) * 60 + Number(m) + hours * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+export function formatTimeRange(value: string | null | undefined) {
+  const { start, end } = parseTimeRange(value);
+  if (!start) return "";
+  return end ? `${start}–${end}` : start;
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   unscheduled: "未約期",
   scheduled: "已約期",
