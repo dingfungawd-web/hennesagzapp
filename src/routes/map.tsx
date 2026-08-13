@@ -125,7 +125,12 @@ function MapPage() {
     setDraft(null);
   };
 
-  const located = orders.filter((o) => o.latitude && o.longitude);
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const hiddenCount = Object.values(hidden).filter(Boolean).length;
+
+  const located = orders.filter(
+    (o) => o.latitude && o.longitude && isUpcoming(o) && !hidden[o.id],
+  );
 
 
   useEffect(() => {
