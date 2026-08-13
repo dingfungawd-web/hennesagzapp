@@ -25,7 +25,7 @@ import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders, useTeams } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
-import { formatTimeRange, STATUS_LABEL, type Order } from "@/lib/domain";
+import { formatTimeRange, isUpcoming, STATUS_LABEL, type Order } from "@/lib/domain";
 
 
 export const Route = createFileRoute("/map")({
