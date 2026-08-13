@@ -191,8 +191,13 @@ function MapPage() {
       });
     }
     const markers = located.map((o) => {
+      const isScheduled = o.status !== "unscheduled";
       const marker = new AMap.Marker({
         position: [Number(o.longitude), Number(o.latitude)],
+        offset: new AMap.Pixel(-11, -11),
+        content: isScheduled
+          ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">約</div>`
+          : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`,
       });
       marker.on("click", () => {
         if (!destRef.current) setDest(o);
