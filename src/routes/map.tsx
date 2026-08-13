@@ -221,7 +221,7 @@ function MapPage() {
       mapRef.current.add(markers);
       mapRef.current.setFitView(markers, false, [60, 60, 60, 60]);
     }
-  }, [ready, located.length]);
+  }, [ready, located.map((o) => `${o.id}:${o.status}`).join(",")]);
 
   const focus = (o: Order) => {
     if (mapRef.current && o.latitude && o.longitude) {
