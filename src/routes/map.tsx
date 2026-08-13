@@ -254,12 +254,20 @@ function MapPage() {
   return (
     <AppShell
       title="地圖路線"
-      subtitle={`${located.length} / ${orders.length} 張訂單已定位`}
+      subtitle={`顯示 ${located.length} 張（未約＋今天或之後已約）${hiddenCount ? ` · 已隱藏 ${hiddenCount}` : ""}`}
       actions={
-        <Button size="sm" onClick={calcRoute} disabled={calculating || !origin || !dest}>
-          <RouteIcon className="size-4" />
-          {calculating ? "計算中…" : "計算駕車時間"}
-        </Button>
+        <div className="flex gap-2">
+          {hiddenCount > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setHidden({})}>
+              <Eye className="size-4" />
+              取消隱藏（{hiddenCount}）
+            </Button>
+          )}
+          <Button size="sm" onClick={calcRoute} disabled={calculating || !origin || !dest}>
+            <RouteIcon className="size-4" />
+            {calculating ? "計算中…" : "計算駕車時間"}
+          </Button>
+        </div>
       }
     >
       {configured === false && (
