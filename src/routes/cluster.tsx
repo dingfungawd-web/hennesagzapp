@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCheck, ChevronRight, CopyCheck, MapPin, Phone, Users } from "lucide-react";
+import { CheckCheck, ChevronRight, CopyCheck, Eye, EyeOff, MapPin, Phone, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import {
 import { useOrders, useTeams } from "@/lib/queries";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
-import { haversine, STATUS_LABEL, type Order } from "@/lib/domain";
+import { haversine, isUpcoming, STATUS_LABEL, type Order } from "@/lib/domain";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -54,13 +54,18 @@ function ClusterPage() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const hiddenCount = Object.values(hidden).filter(Boolean).length;
 
   const { data: orders = [] } = useOrders();
   const { data: teams = [] } = useTeams();
 
   const list = useMemo(
-    () => orders.filter((o) => o.status === "unscheduled" || o.id === expanded),
-    [orders, expanded],
+    () =>
+      orders.filter(
+        (o) => (o.status === "unscheduled" || o.id === expanded) && !hidden[o.id],
+      ),
+    [orders, expanded, hidden],
   );
 
   const unscheduledCount = orders.filter((o) => o.status === "unscheduled").length;
@@ -70,7 +75,11 @@ function ClusterPage() {
     return orders
       .filter(
         (x) =>
-          x.id !== o.id && x.status !== "completed" && x.latitude != null && x.longitude != null,
+          x.id !== o.id &&
+          isUpcoming(x) &&
+          !hidden[x.id] &&
+          x.latitude != null &&
+          x.longitude != null,
       )
       .map((x) => ({
         order: x,
@@ -186,6 +195,15 @@ function ClusterPage() {
               {dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}
             </span>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 shrink-0 px-2 text-xs"
+            title="隱藏（更新頁面後回復）"
+            onClick={() => setHidden((h) => ({ ...h, [o.id]: true }))}
+          >
+            <EyeOff className="size-3.5" />
+          </Button>
         </div>
         <div className="mt-2 grid gap-2 md:grid-cols-[150px_1fr_150px]">
           <Input
@@ -221,7 +239,18 @@ function ClusterPage() {
   };
 
   return (
-    <AppShell title="智能配對" subtitle={`共 ${unscheduledCount} 張未約期訂單`}>
+    <AppShell
+      title="智能配對"
+      subtitle={`共 ${unscheduledCount} 張未約期訂單${hiddenCount ? ` · 已隱藏 ${hiddenCount}` : ""}`}
+      actions={
+        hiddenCount > 0 ? (
+          <Button size="sm" variant="outline" onClick={() => setHidden({})}>
+            <Eye className="size-4" />
+            取消隱藏（{hiddenCount}）
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="space-y-2">
         {list.map((o) => {
           const open = expanded === o.id;
