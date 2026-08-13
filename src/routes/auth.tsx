@@ -21,7 +21,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -35,6 +35,7 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      const email = `${username.trim().toLowerCase()}@hansha.local`;
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -70,14 +71,14 @@ function AuthPage() {
         </div>
         <form onSubmit={submit} className="space-y-4 rounded-lg border border-border bg-card p-6">
           <div className="space-y-2">
-            <Label htmlFor="email">電郵</Label>
+            <Label htmlFor="username">用戶名稱</Label>
             <Input
-              id="email"
-              type="email"
+              id="username"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="例如：ah-keung"
             />
           </div>
           <div className="space-y-2">
@@ -86,10 +87,9 @@ function AuthPage() {
               id="password"
               type="password"
               required
-              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="至少 6 位"
+              placeholder="密碼"
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>

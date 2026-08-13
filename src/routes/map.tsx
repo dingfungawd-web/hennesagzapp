@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
+import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders, useTeams } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
-import { formatTimeRange, STATUS_LABEL, type Order } from "@/lib/domain";
+import { formatTimeRange, isUpcoming, STATUS_LABEL, type Order } from "@/lib/domain";
 
 
 export const Route = createFileRoute("/map")({
@@ -125,7 +125,12 @@ function MapPage() {
     setDraft(null);
   };
 
-  const located = orders.filter((o) => o.latitude && o.longitude);
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const hiddenCount = Object.values(hidden).filter(Boolean).length;
+
+  const located = orders.filter(
+    (o) => o.latitude && o.longitude && isUpcoming(o) && !hidden[o.id],
+  );
 
 
   useEffect(() => {
@@ -186,8 +191,13 @@ function MapPage() {
       });
     }
     const markers = located.map((o) => {
+      const isScheduled = o.status !== "unscheduled";
       const marker = new AMap.Marker({
         position: [Number(o.longitude), Number(o.latitude)],
+        offset: new AMap.Pixel(-11, -11),
+        content: isScheduled
+          ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">約</div>`
+          : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`,
       });
       marker.on("click", () => {
         if (!destRef.current) setDest(o);
@@ -211,7 +221,7 @@ function MapPage() {
       mapRef.current.add(markers);
       mapRef.current.setFitView(markers, false, [60, 60, 60, 60]);
     }
-  }, [ready, located.length]);
+  }, [ready, located.map((o) => `${o.id}:${o.status}`).join(",")]);
 
   const focus = (o: Order) => {
     if (mapRef.current && o.latitude && o.longitude) {
@@ -244,12 +254,20 @@ function MapPage() {
   return (
     <AppShell
       title="地圖路線"
-      subtitle={`${located.length} / ${orders.length} 張訂單已定位`}
+      subtitle={`顯示 ${located.length} 張（未約＋今天或之後已約）${hiddenCount ? ` · 已隱藏 ${hiddenCount}` : ""}`}
       actions={
-        <Button size="sm" onClick={calcRoute} disabled={calculating || !origin || !dest}>
-          <RouteIcon className="size-4" />
-          {calculating ? "計算中…" : "計算駕車時間"}
-        </Button>
+        <div className="flex gap-2">
+          {hiddenCount > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setHidden({})}>
+              <Eye className="size-4" />
+              取消隱藏（{hiddenCount}）
+            </Button>
+          )}
+          <Button size="sm" onClick={calcRoute} disabled={calculating || !origin || !dest}>
+            <RouteIcon className="size-4" />
+            {calculating ? "計算中…" : "計算駕車時間"}
+          </Button>
+        </div>
       }
     >
       {configured === false && (
@@ -324,7 +342,16 @@ function MapPage() {
                     onClick={() => openSchedule(o)}
                   >
                     <CalendarPlus className="size-3" />
-                    {o.status === "scheduled" ? "改期" : "排期"}
+                    {o.status === "unscheduled" ? "排期" : "改期"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    title="隱藏（更新頁面後回復）"
+                    onClick={() => setHidden((h) => ({ ...h, [o.id]: true }))}
+                  >
+                    <EyeOff className="size-3" />
                   </Button>
                 </div>
               </div>
