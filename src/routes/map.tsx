@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
+import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
