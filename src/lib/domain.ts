@@ -80,3 +80,10 @@ export function startOfWeek(d: Date) {
 }
 
 export const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+
+/** 今天或之後的已約未完成單／跟進單，以及所有未約期單 */
+export function isUpcoming(o: { status: string; install_date: string | null }) {
+  if (o.status === "completed") return false;
+  if (!o.install_date) return true;
+  return o.install_date >= ymd(new Date());
+}
