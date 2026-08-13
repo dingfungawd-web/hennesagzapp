@@ -342,7 +342,16 @@ function MapPage() {
                     onClick={() => openSchedule(o)}
                   >
                     <CalendarPlus className="size-3" />
-                    {o.status === "scheduled" ? "改期" : "排期"}
+                    {o.status === "unscheduled" ? "排期" : "改期"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    title="隱藏（更新頁面後回復）"
+                    onClick={() => setHidden((h) => ({ ...h, [o.id]: true }))}
+                  >
+                    <EyeOff className="size-3" />
                   </Button>
                 </div>
               </div>
