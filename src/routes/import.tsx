@@ -37,34 +37,98 @@ type Row = {
   order_content: string | null;
   measure_date: string | null;
   notes: string | null;
+  install_date: string | null;
+  install_time: string | null;
+  status: string;
 };
 
 const HEADER_MAP: Record<string, keyof Row> = {
   訂單號: "order_no",
   订单号: "order_no",
+  工程編號: "order_no",
+  工程编号: "order_no",
   客戶姓名: "customer_name",
   客户姓名: "customer_name",
   姓名: "customer_name",
   電話: "customer_phone",
   电话: "customer_phone",
   聯絡電話: "customer_phone",
+  联络电话: "customer_phone",
   地址: "raw_address",
   客戶地址: "raw_address",
   客户地址: "raw_address",
+  單位: "raw_address",
+  单位: "raw_address",
   訂單內容: "order_content",
   订单内容: "order_content",
   度尺日期: "measure_date",
+  安裝日期: "install_date",
+  安装日期: "install_date",
   備註: "notes",
   备注: "notes",
 };
 
+/** 這些欄位屬於資料欄，其餘數字欄視為產品數量 */
+const NON_PRODUCT_KEYS = new Set([
+  ...Object.keys(HEADER_MAP),
+  "客戶姓氏",
+  "客户姓氏",
+  "客戶稱呼",
+  "客户称呼",
+  "地區",
+  "地区",
+  "接單日期",
+  "接單同事",
+  "收訂日期",
+  "訂金",
+  "訂金收款方式",
+  "已付餘款",
+  "已付餘款方式",
+  "跟進日期",
+  "跟進餘款",
+  "跟進餘款方式",
+  "餘款",
+  "營業額",
+  "全付折扣",
+  "全單折扣",
+  "保養費",
+  "保養日期",
+  "生意來源",
+  "度尺人",
+  "安裝同事",
+  "Invitation Date",
+  "Score",
+]);
+
 function normalizeDate(v: unknown): string | null {
   if (!v) return null;
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) {
+    const y = v.getFullYear();
+    return `${y}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+  }
   const s = String(v).trim().replace(/\//g, "-");
   const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (!m) return null;
-  return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  const date = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  return date === "1970-01-01" ? null : date;
+}
+
+function normalizeTime(v: unknown): string | null {
+  if (!v) return null;
+  let hh: number;
+  let mm: number;
+  if (v instanceof Date) {
+    hh = v.getHours();
+    mm = v.getMinutes();
+  } else {
+    const m = String(v).match(/(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    hh = Number(m[1]);
+    mm = Number(m[2]);
+  }
+  if (hh === 0 && mm === 0) return null;
+  const start = `${String(hh).padStart(2, "0")}:${mm >= 30 ? "30" : "00"}`;
+  return `${start}-${shiftTime(start, 2)}`;
 }
 
 function ImportPage() {
@@ -98,21 +162,49 @@ function ImportPage() {
         order_content: null,
         measure_date: null,
         notes: null,
+        install_date: null,
+        install_time: null,
+        status: "unscheduled",
       };
-      for (const [key, value] of Object.entries(raw)) {
-        const field = HEADER_MAP[key.trim()];
+      let surname = "";
+      let title = "";
+      let district = "";
+      const products: string[] = [];
+
+      for (const [rawKey, value] of Object.entries(raw)) {
+        const key = rawKey.trim();
+        const field = HEADER_MAP[key];
+        if (key === "客戶姓氏" || key === "客户姓氏") surname = String(value ?? "").trim();
+        else if (key === "客戶稱呼" || key === "客户称呼") title = String(value ?? "").trim();
+        else if (key === "地區" || key === "地区") district = String(value ?? "").trim();
+        else if (!field && !NON_PRODUCT_KEYS.has(key)) {
+          const n = Number(String(value ?? "").trim());
+          if (Number.isFinite(n) && n > 0) products.push(`${key} x${n}`);
+        }
         if (!field) continue;
         if (field === "measure_date") row.measure_date = normalizeDate(value);
-        else if (field === "customer_name" || field === "raw_address")
+        else if (field === "install_date") {
+          row.install_date = normalizeDate(value);
+          row.install_time = row.install_date ? normalizeTime(value) : null;
+        } else if (field === "customer_name" || field === "raw_address")
           row[field] = String(value ?? "").trim();
+        else if (field === "status") continue;
         else row[field] = String(value ?? "").trim() || null;
       }
+
+      if (!row.customer_name) row.customer_name = `${surname}${title}`.trim();
+      if (row.raw_address && district && !row.raw_address.includes(district))
+        row.raw_address = `${district} ${row.raw_address}`;
+      if (!row.order_content && products.length) row.order_content = products.join("、");
+      if (row.install_date) row.status = "scheduled";
+
       if (row.customer_name && row.raw_address) parsed.push(row);
     }
     setFileName(file.name);
     setRows(parsed);
     toast.success(`解析到 ${parsed.length} 行有效資料`);
   };
+
 
   const save = async () => {
     if (rows.length === 0) return;
