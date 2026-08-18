@@ -225,16 +225,23 @@ function ImportPage() {
       toast.error("建立匯入批次失敗");
       return;
     }
-    const { data: inserted, error } = await supabase
-      .from("orders")
-      .insert(rows.map((r) => ({ ...r, import_batch_id: batch.id })))
-      .select("id, raw_address");
+    const inserted: { id: string; raw_address: string }[] = [];
+    let error: { message: string } | null = null;
+    for (let i = 0; i < rows.length; i += 300) {
+      const chunk = rows.slice(i, i + 300).map((r) => ({ ...r, import_batch_id: batch.id }));
+      const res = await supabase.from("orders").insert(chunk).select("id, raw_address");
+      if (res.error) {
+        error = res.error;
+        break;
+      }
+      inserted.push(...(res.data ?? []));
+    }
     await supabase
       .from("import_batches")
       .update({
         status: error ? "failed" : "completed",
-        success_count: error ? 0 : rows.length,
-        failed_count: error ? rows.length : 0,
+        success_count: inserted.length,
+        failed_count: rows.length - inserted.length,
       })
       .eq("id", batch.id);
     setSaving(false);
@@ -243,6 +250,7 @@ function ImportPage() {
       return;
     }
     toast.success(`已匯入 ${rows.length} 張訂單，正在自動解析地址…`);
+
     setRows([]);
     setFileName("");
     qc.invalidateQueries({ queryKey: ["orders"] });
