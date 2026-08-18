@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
+import { shiftTime } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
 
 export const Route = createFileRoute("/import")({
