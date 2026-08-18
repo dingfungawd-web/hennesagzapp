@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
-import { shiftTime } from "@/lib/domain";
+import { shiftTime, isUpcoming } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
 
 export const Route = createFileRoute("/import")({
@@ -137,6 +137,7 @@ function ImportPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState("");
   const { data: batches = [] } = useImportBatches();
 
   const parseFile = async (file: File) => {
@@ -225,11 +226,11 @@ function ImportPage() {
       toast.error("建立匯入批次失敗");
       return;
     }
-    const inserted: { id: string; raw_address: string }[] = [];
+    const inserted: { id: string; raw_address: string; status: string; install_date: string | null }[] = [];
     let error: { message: string } | null = null;
     for (let i = 0; i < rows.length; i += 300) {
       const chunk = rows.slice(i, i + 300).map((r) => ({ ...r, import_batch_id: batch.id }));
-      const res = await supabase.from("orders").insert(chunk).select("id, raw_address");
+      const res = await supabase.from("orders").insert(chunk).select("id, raw_address, status, install_date");
       if (res.error) {
         error = res.error;
         break;
@@ -257,8 +258,10 @@ function ImportPage() {
     qc.invalidateQueries({ queryKey: ["import_batches"] });
 
     const summary = await autoGeocodeOrders(
-      (inserted ?? []).map((o) => ({ id: o.id, address: o.raw_address })),
+      inserted.filter(isUpcoming).map((o) => ({ id: o.id, address: o.raw_address })),
+      (done, total) => setProgress(`地址解析中… ${done}/${total}`),
     );
+    setProgress("");
     qc.invalidateQueries({ queryKey: ["orders"] });
     if (!summary.configured) toast.error("未設定高德 API Key，地址未解析");
     else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失敗 ${summary.failed}` : ""}`);
