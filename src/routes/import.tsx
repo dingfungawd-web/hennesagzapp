@@ -290,7 +290,7 @@ function ImportPage() {
           </Button>
           <Button size="sm" onClick={save} disabled={saving || rows.length === 0}>
             <Save className="size-4" />
-            匯入 {rows.length || ""} 張
+            {progress || `匯入 ${rows.length || ""} 張`}
           </Button>
         </>
       }
@@ -324,6 +324,7 @@ function ImportPage() {
                 <th className="px-3 py-2">地址</th>
                 <th className="px-3 py-2">內容</th>
                 <th className="px-3 py-2">度尺</th>
+                <th className="px-3 py-2">安裝</th>
               </tr>
             </thead>
             <tbody>
@@ -334,6 +335,9 @@ function ImportPage() {
                   <td className="max-w-80 truncate px-3 py-2 text-muted-foreground">{r.raw_address}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.order_content ?? "—"}</td>
                   <td className="tabular px-3 py-2 text-muted-foreground">{r.measure_date ?? "—"}</td>
+                  <td className="tabular px-3 py-2 text-muted-foreground">
+                    {r.install_date ? `${r.install_date}${r.install_time ? ` ${r.install_time}` : ""}` : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
