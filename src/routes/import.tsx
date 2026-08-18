@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
+import { shiftTime, isUpcoming } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
 
 export const Route = createFileRoute("/import")({
@@ -37,34 +38,98 @@ type Row = {
   order_content: string | null;
   measure_date: string | null;
   notes: string | null;
+  install_date: string | null;
+  install_time: string | null;
+  status: string;
 };
 
 const HEADER_MAP: Record<string, keyof Row> = {
   訂單號: "order_no",
   订单号: "order_no",
+  工程編號: "order_no",
+  工程编号: "order_no",
   客戶姓名: "customer_name",
   客户姓名: "customer_name",
   姓名: "customer_name",
   電話: "customer_phone",
   电话: "customer_phone",
   聯絡電話: "customer_phone",
+  联络电话: "customer_phone",
   地址: "raw_address",
   客戶地址: "raw_address",
   客户地址: "raw_address",
+  單位: "raw_address",
+  单位: "raw_address",
   訂單內容: "order_content",
   订单内容: "order_content",
   度尺日期: "measure_date",
+  安裝日期: "install_date",
+  安装日期: "install_date",
   備註: "notes",
   备注: "notes",
 };
 
+/** 這些欄位屬於資料欄，其餘數字欄視為產品數量 */
+const NON_PRODUCT_KEYS = new Set([
+  ...Object.keys(HEADER_MAP),
+  "客戶姓氏",
+  "客户姓氏",
+  "客戶稱呼",
+  "客户称呼",
+  "地區",
+  "地区",
+  "接單日期",
+  "接單同事",
+  "收訂日期",
+  "訂金",
+  "訂金收款方式",
+  "已付餘款",
+  "已付餘款方式",
+  "跟進日期",
+  "跟進餘款",
+  "跟進餘款方式",
+  "餘款",
+  "營業額",
+  "全付折扣",
+  "全單折扣",
+  "保養費",
+  "保養日期",
+  "生意來源",
+  "度尺人",
+  "安裝同事",
+  "Invitation Date",
+  "Score",
+]);
+
 function normalizeDate(v: unknown): string | null {
   if (!v) return null;
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) {
+    const y = v.getFullYear();
+    return `${y}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+  }
   const s = String(v).trim().replace(/\//g, "-");
   const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (!m) return null;
-  return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  const date = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  return date === "1970-01-01" ? null : date;
+}
+
+function normalizeTime(v: unknown): string | null {
+  if (!v) return null;
+  let hh: number;
+  let mm: number;
+  if (v instanceof Date) {
+    hh = v.getHours();
+    mm = v.getMinutes();
+  } else {
+    const m = String(v).match(/(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    hh = Number(m[1]);
+    mm = Number(m[2]);
+  }
+  if (hh === 0 && mm === 0) return null;
+  const start = `${String(hh).padStart(2, "0")}:${mm >= 30 ? "30" : "00"}`;
+  return `${start}-${shiftTime(start, 2)}`;
 }
 
 function ImportPage() {
@@ -72,6 +137,7 @@ function ImportPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState("");
   const { data: batches = [] } = useImportBatches();
 
   const parseFile = async (file: File) => {
@@ -98,21 +164,49 @@ function ImportPage() {
         order_content: null,
         measure_date: null,
         notes: null,
+        install_date: null,
+        install_time: null,
+        status: "unscheduled",
       };
-      for (const [key, value] of Object.entries(raw)) {
-        const field = HEADER_MAP[key.trim()];
+      let surname = "";
+      let title = "";
+      let district = "";
+      const products: string[] = [];
+
+      for (const [rawKey, value] of Object.entries(raw)) {
+        const key = rawKey.trim();
+        const field = HEADER_MAP[key];
+        if (key === "客戶姓氏" || key === "客户姓氏") surname = String(value ?? "").trim();
+        else if (key === "客戶稱呼" || key === "客户称呼") title = String(value ?? "").trim();
+        else if (key === "地區" || key === "地区") district = String(value ?? "").trim();
+        else if (!field && !NON_PRODUCT_KEYS.has(key)) {
+          const n = Number(String(value ?? "").trim());
+          if (Number.isFinite(n) && n > 0) products.push(`${key} x${n}`);
+        }
         if (!field) continue;
         if (field === "measure_date") row.measure_date = normalizeDate(value);
-        else if (field === "customer_name" || field === "raw_address")
+        else if (field === "install_date") {
+          row.install_date = normalizeDate(value);
+          row.install_time = row.install_date ? normalizeTime(value) : null;
+        } else if (field === "customer_name" || field === "raw_address")
           row[field] = String(value ?? "").trim();
+        else if (field === "status") continue;
         else row[field] = String(value ?? "").trim() || null;
       }
+
+      if (!row.customer_name) row.customer_name = `${surname}${title}`.trim();
+      if (row.raw_address && district && !row.raw_address.includes(district))
+        row.raw_address = `${district} ${row.raw_address}`;
+      if (!row.order_content && products.length) row.order_content = products.join("、");
+      if (row.install_date) row.status = "scheduled";
+
       if (row.customer_name && row.raw_address) parsed.push(row);
     }
     setFileName(file.name);
     setRows(parsed);
     toast.success(`解析到 ${parsed.length} 行有效資料`);
   };
+
 
   const save = async () => {
     if (rows.length === 0) return;
@@ -132,16 +226,23 @@ function ImportPage() {
       toast.error("建立匯入批次失敗");
       return;
     }
-    const { data: inserted, error } = await supabase
-      .from("orders")
-      .insert(rows.map((r) => ({ ...r, import_batch_id: batch.id })))
-      .select("id, raw_address");
+    const inserted: { id: string; raw_address: string; status: string; install_date: string | null }[] = [];
+    let error: { message: string } | null = null;
+    for (let i = 0; i < rows.length; i += 300) {
+      const chunk = rows.slice(i, i + 300).map((r) => ({ ...r, import_batch_id: batch.id }));
+      const res = await supabase.from("orders").insert(chunk).select("id, raw_address, status, install_date");
+      if (res.error) {
+        error = res.error;
+        break;
+      }
+      inserted.push(...(res.data ?? []));
+    }
     await supabase
       .from("import_batches")
       .update({
         status: error ? "failed" : "completed",
-        success_count: error ? 0 : rows.length,
-        failed_count: error ? rows.length : 0,
+        success_count: inserted.length,
+        failed_count: rows.length - inserted.length,
       })
       .eq("id", batch.id);
     setSaving(false);
@@ -150,14 +251,17 @@ function ImportPage() {
       return;
     }
     toast.success(`已匯入 ${rows.length} 張訂單，正在自動解析地址…`);
+
     setRows([]);
     setFileName("");
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["import_batches"] });
 
     const summary = await autoGeocodeOrders(
-      (inserted ?? []).map((o) => ({ id: o.id, address: o.raw_address })),
+      inserted.filter(isUpcoming).map((o) => ({ id: o.id, address: o.raw_address })),
+      (done, total) => setProgress(`地址解析中… ${done}/${total}`),
     );
+    setProgress("");
     qc.invalidateQueries({ queryKey: ["orders"] });
     if (!summary.configured) toast.error("未設定高德 API Key，地址未解析");
     else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失敗 ${summary.failed}` : ""}`);
@@ -186,7 +290,7 @@ function ImportPage() {
           </Button>
           <Button size="sm" onClick={save} disabled={saving || rows.length === 0}>
             <Save className="size-4" />
-            匯入 {rows.length || ""} 張
+            {progress || `匯入 ${rows.length || ""} 張`}
           </Button>
         </>
       }
@@ -220,6 +324,7 @@ function ImportPage() {
                 <th className="px-3 py-2">地址</th>
                 <th className="px-3 py-2">內容</th>
                 <th className="px-3 py-2">度尺</th>
+                <th className="px-3 py-2">安裝</th>
               </tr>
             </thead>
             <tbody>
@@ -230,6 +335,9 @@ function ImportPage() {
                   <td className="max-w-80 truncate px-3 py-2 text-muted-foreground">{r.raw_address}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.order_content ?? "—"}</td>
                   <td className="tabular px-3 py-2 text-muted-foreground">{r.measure_date ?? "—"}</td>
+                  <td className="tabular px-3 py-2 text-muted-foreground">
+                    {r.install_date ? `${r.install_date}${r.install_time ? ` ${r.install_time}` : ""}` : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
