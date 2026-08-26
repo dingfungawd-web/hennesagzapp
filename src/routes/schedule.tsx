@@ -133,8 +133,30 @@ function SchedulePage() {
         </>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+      <div
+        className={cn(
+          "grid gap-4",
+          view !== "day" && "lg:grid-cols-[1fr_280px]",
+        )}
+      >
         <div className="space-y-2">
+        {view === "day" && (
+          <div className="mb-4 border-b border-border pb-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">当日排期</p>
+                <h2 className="mt-1 text-xl font-semibold">
+                  {anchor.getFullYear()} 年 {anchor.getMonth() + 1} 月 {anchor.getDate()} 日 · 周
+                  {WEEKDAYS[(anchor.getDay() + 6) % 7]}
+                </h2>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-semibold">{(byDay.get(ymd(anchor)) ?? []).length} 张订单</p>
+                <p className="text-xs text-muted-foreground">按到达时段排列</p>
+              </div>
+            </div>
+          </div>
+        )}
         {view === "month" && (
           <div className="hidden grid-cols-7 gap-2 text-center text-xs text-muted-foreground md:grid">
             {WEEKDAYS.map((w) => (
@@ -212,20 +234,50 @@ function SchedulePage() {
                       </button>
                     ))}
                     {list.length > 4 && (
-                      <p className="px-1 text-[11px] text-muted-foreground">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-full justify-start px-1 text-[11px] text-muted-foreground"
+                        onClick={() => {
+                          setAnchor(new Date(d));
+                          setView("day");
+                        }}
+                      >
                         +{list.length - 4} 张
-                      </p>
+                      </Button>
                     )}
                   </div>
                 ) : (
                 <div className="space-y-2">
                   {list.map((o, idx) => (
-                    <div key={o.id} className="rounded border border-border bg-surface p-2">
+                    <div
+                      key={o.id}
+                      className={cn(
+                        "rounded border border-border bg-surface p-2",
+                        view === "day" && "grid gap-4 p-4 md:grid-cols-[56px_120px_minmax(0,1fr)_auto] md:items-start",
+                      )}
+                    >
+                      {view === "day" && (
+                        <div className="flex size-12 items-center justify-center rounded bg-primary/15 text-xl font-semibold text-primary">
+                          {idx + 1}
+                        </div>
+                      )}
+                      {view === "day" && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">到达时段</p>
+                          <p className="tabular mt-1 text-base font-semibold">
+                            {o.install_time ? formatTimeRange(o.install_time) : "未定时段"}
+                          </p>
+                        </div>
+                      )}
+                      <div>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 items-start gap-2">
-                          <span className="tabular mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 text-[11px] font-medium text-primary">
-                            {idx + 1}
-                          </span>
+                          {view !== "day" && (
+                            <span className="tabular mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 text-[11px] font-medium text-primary">
+                              {idx + 1}
+                            </span>
+                          )}
                           <div className="min-w-0">
                             <p
                               className={cn(
@@ -235,8 +287,8 @@ function SchedulePage() {
                             >
                               {o.raw_address}
                             </p>
-                            <p className="tabular mt-0.5 text-xs text-muted-foreground">
-                              {o.install_time ? `${formatTimeRange(o.install_time)} · ` : "未定时段 · "}
+                            <p className="tabular mt-1 text-xs text-muted-foreground">
+                              {view !== "day" && (o.install_time ? `${formatTimeRange(o.install_time)} · ` : "未定时段 · ")}
                               {o.customer_name}
                               {o.customer_phone ? ` · ${o.customer_phone}` : ""}
                             </p>
@@ -248,8 +300,13 @@ function SchedulePage() {
                           </Badge>
                         )}
                       </div>
+                      {view === "day" && o.order_content && (
+                        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{o.order_content}</p>
+                      )}
+                      </div>
+                      <div className={cn(view === "day" && "w-full md:w-52")}>
                       <TimeRangeSelect
-                        className="mt-2"
+                        className={cn(view !== "day" && "mt-2")}
                         compact
                         value={o.install_time}
                         onChange={(v) =>
@@ -274,6 +331,7 @@ function SchedulePage() {
                       >
                         取消约期
                       </Button>
+                      </div>
 
                     </div>
                   ))}
@@ -290,7 +348,7 @@ function SchedulePage() {
         </div>
 
 
-        <aside className="rounded-lg border border-border bg-card p-3">
+        {view !== "day" && <aside className="rounded-lg border border-border bg-card p-3">
           <p className="mb-2 text-sm font-medium">未排程订单（{unscheduled.length}）</p>
           <div className="max-h-[70vh] space-y-2 overflow-auto">
             {unscheduled.map((o) => (
@@ -322,7 +380,7 @@ function SchedulePage() {
               <p className="py-6 text-center text-xs text-muted-foreground">全部订单已排程 🎉</p>
             )}
           </div>
-        </aside>
+        </aside>}
       </div>
 
       <Dialog open={!!draftId} onOpenChange={(v) => !v && setDraftId(null)}>
