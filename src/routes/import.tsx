@@ -286,8 +286,11 @@ function ImportPage() {
     }
     const inserted: { id: string; raw_address: string; status: string; install_date: string | null }[] = [];
     let error: { message: string } | null = null;
-    for (let i = 0; i < rows.length; i += 300) {
-      const chunk = rows.slice(i, i + 300).map((r) => ({ ...r, import_batch_id: batch.id }));
+    for (let i = 0; i < finalRows.length; i += 300) {
+      const chunk = finalRows.slice(i, i + 300).map((r) => {
+        const { followup_date: _fd, followup_time: _ft, ...rest } = r;
+        return { ...rest, import_batch_id: batch.id };
+      });
       const res = await supabase.from("orders").insert(chunk).select("id, raw_address, status, install_date");
       if (res.error) {
         error = res.error;
