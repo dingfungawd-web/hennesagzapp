@@ -196,8 +196,9 @@ function ImportPage() {
           row.install_time = row.install_date ? normalizeTime(value) : null;
         } else if (field === "customer_name" || field === "raw_address")
           row[field] = String(value ?? "").trim();
-        else if (field === "status") continue;
+        else if (field === "status" || field === "order_type") continue;
         else row[field] = String(value ?? "").trim() || null;
+
       }
 
       if (!row.customer_name) row.customer_name = `${surname}${title}`.trim();
