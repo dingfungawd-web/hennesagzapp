@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders, useTeams } from "@/lib/queries";
-import { ORDER_TYPE_LABEL, formatTimeRange, ymd, type Order } from "@/lib/domain";
+import { ORDER_TYPE_LABEL, formatTimeRange, type Order } from "@/lib/domain";
 
 export const Route = createFileRoute("/entry")({
   head: () => ({
