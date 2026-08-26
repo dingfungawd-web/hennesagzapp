@@ -157,9 +157,23 @@ function normalizeTime(v: unknown): string | null {
   return `${start}-${shiftTime(start, 2)}`;
 }
 
+/** 按今次汇入嘅单类型，决定用跟进日期定安装日期做排期日期 */
+function applyType(r: Row, type: ImportType): Row {
+  const date = type === "followup" ? r.followup_date : r.install_date;
+  const time = type === "followup" ? r.followup_time : r.install_time;
+  return {
+    ...r,
+    order_type: type,
+    install_date: date,
+    install_time: date ? time : null,
+    status: date ? "scheduled" : "unscheduled",
+  };
+}
+
 function ImportPage() {
   const qc = useQueryClient();
   const [rows, setRows] = useState<Row[]>([]);
+  const [importType, setImportType] = useState<ImportType>("followup");
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
