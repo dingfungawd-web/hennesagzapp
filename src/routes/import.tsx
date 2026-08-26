@@ -237,6 +237,9 @@ function ImportPage() {
         else if (field === "install_date") {
           row.install_date = normalizeDate(value);
           row.install_time = row.install_date ? normalizeTime(value) : null;
+        } else if (field === "followup_date") {
+          row.followup_date = normalizeDate(value);
+          row.followup_time = row.followup_date ? normalizeTime(value) : null;
         } else if (field === "customer_name" || field === "raw_address")
           row[field] = String(value ?? "").trim();
         else if (field === "status" || field === "order_type") continue;
