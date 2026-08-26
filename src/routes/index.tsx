@@ -526,8 +526,8 @@ function OrdersPage() {
                       </Button>
                   </div>
                 </div>
+                </div>
               )}
-            </div>
             </div>
           );
         })}
