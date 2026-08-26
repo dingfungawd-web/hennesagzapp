@@ -31,15 +31,15 @@ import { formatTimeRange, isUpcoming, STATUS_LABEL, type Order } from "@/lib/dom
 export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
-      { title: "地圖路線 — 漢紗排程調度台" },
+      { title: "地图路线 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "高德地圖檢視所有已定位訂單，設定起點終點即時計算駕車時間與距離。",
+        content: "高德地图检视所有已定位订单，设定起点终点即时计算驾车时间与距离。",
       },
-      { property: "og:title", content: "地圖路線 — 漢紗排程調度台" },
+      { property: "og:title", content: "地图路线 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "高德地圖檢視所有已定位訂單，設定起點終點即時計算駕車時間與距離。",
+        content: "高德地图检视所有已定位订单，设定起点终点即时计算驾车时间与距离。",
       },
     ],
   }),
@@ -88,7 +88,7 @@ function MapPage() {
   const saveSchedule = async () => {
     if (!draft) return;
     if (!dDate) {
-      toast.error("請揀安裝日期");
+      toast.error("请拣安装日期");
       return;
     }
     setSavingSchedule(true);
@@ -103,11 +103,11 @@ function MapPage() {
       .eq("id", draft.id);
     setSavingSchedule(false);
     if (error) {
-      toast.error("排期失敗");
+      toast.error("排期失败");
       return;
     }
     qc.invalidateQueries({ queryKey: ["orders"] });
-    toast.success("已確定排期");
+    toast.success("已确定排期");
     setDraft(null);
   };
 
@@ -117,11 +117,11 @@ function MapPage() {
       .update({ install_date: null, install_time: null, team_id: null, status: "unscheduled" })
       .eq("id", o.id);
     if (error) {
-      toast.error("取消失敗");
+      toast.error("取消失败");
       return;
     }
     qc.invalidateQueries({ queryKey: ["orders"] });
-    toast.success("已取消約期");
+    toast.success("已取消约期");
     setDraft(null);
   };
 
@@ -147,9 +147,9 @@ function MapPage() {
           s.src = `https://webapi.amap.com/maps?v=2.0&key=${cfg.jsKey}`;
           s.async = true;
           s.onload = () => resolve();
-          s.onerror = () => reject(new Error("地圖載入失敗"));
+          s.onerror = () => reject(new Error("地图载入失败"));
           document.head.appendChild(s);
-        }).catch(() => toast.error("高德地圖載入失敗"));
+        }).catch(() => toast.error("高德地图载入失败"));
       }
       if (cancelled || !mapEl.current || !window.AMap) return;
       const AMap = window.AMap as any;
@@ -196,7 +196,7 @@ function MapPage() {
         position: [Number(o.longitude), Number(o.latitude)],
         offset: new AMap.Pixel(-11, -11),
         content: isScheduled
-          ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">約</div>`
+          ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">约</div>`
           : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`,
       });
       marker.on("click", () => {
@@ -231,7 +231,7 @@ function MapPage() {
 
   const calcRoute = async () => {
     if (!origin || !dest) {
-      toast.error("請先設定起點同終點");
+      toast.error("请先设定起点同终点");
       return;
     }
     setCalculating(true);
@@ -247,40 +247,40 @@ function MapPage() {
     if (res.success && res.text) {
       setRouteText(res.text);
     } else {
-      toast.error(res.message ?? "計算失敗");
+      toast.error(res.message ?? "计算失败");
     }
   };
 
   return (
     <AppShell
-      title="地圖路線"
-      subtitle={`顯示 ${located.length} 張（未約＋今天或之後已約）${hiddenCount ? ` · 已隱藏 ${hiddenCount}` : ""}`}
+      title="地图路线"
+      subtitle={`显示 ${located.length} 张（未约＋今天或之后已约）${hiddenCount ? ` · 已隐藏 ${hiddenCount}` : ""}`}
       actions={
         <div className="flex gap-2">
           {hiddenCount > 0 && (
             <Button size="sm" variant="outline" onClick={() => setHidden({})}>
               <Eye className="size-4" />
-              取消隱藏（{hiddenCount}）
+              取消隐藏（{hiddenCount}）
             </Button>
           )}
           <Button size="sm" onClick={calcRoute} disabled={calculating || !origin || !dest}>
             <RouteIcon className="size-4" />
-            {calculating ? "計算中…" : "計算駕車時間"}
+            {calculating ? "计算中…" : "计算驾车时间"}
           </Button>
         </div>
       }
     >
       {configured === false && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
-          未設定高德地圖 JS Key，地圖無法顯示。請提供 AMAP_JS_KEY 後再試。
+          未设定高德地图 JS Key，地图无法显示。请提供 AMAP_JS_KEY 后再试。
         </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-lg border border-border bg-card">
           <div className="space-y-2 border-b border-border p-3">
-            <RoutePoint label="起點" order={origin} onClear={() => setOrigin(null)} />
-            <RoutePoint label="終點" order={dest} onClear={() => setDest(null)} />
+            <RoutePoint label="起点" order={origin} onClear={() => setOrigin(null)} />
+            <RoutePoint label="终点" order={dest} onClear={() => setDest(null)} />
             {routeText && (
               <div className="rounded border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
                 {routeText}
@@ -324,7 +324,7 @@ function MapPage() {
                     onClick={() => setOrigin(o)}
                   >
                     <Navigation className="size-3" />
-                    設起點
+                    设起点
                   </Button>
                   <Button
                     size="sm"
@@ -333,7 +333,7 @@ function MapPage() {
                     onClick={() => setDest(o)}
                   >
                     <Flag className="size-3" />
-                    設終點
+                    设终点
                   </Button>
                   <Button
                     size="sm"
@@ -348,7 +348,7 @@ function MapPage() {
                     size="sm"
                     variant="ghost"
                     className="h-7 px-2 text-xs"
-                    title="隱藏（更新頁面後回復）"
+                    title="隐藏（更新页面后回复）"
                     onClick={() => setHidden((h) => ({ ...h, [o.id]: true }))}
                   >
                     <EyeOff className="size-3" />
@@ -358,7 +358,7 @@ function MapPage() {
             ))}
             {located.length === 0 && (
               <p className="p-4 text-center text-xs text-muted-foreground">
-                未有已定位訂單，先去訂單列表做地址解析。
+                未有已定位订单，先去订单列表做地址解析。
               </p>
             )}
           </div>
@@ -368,7 +368,7 @@ function MapPage() {
           <div ref={mapEl} style={{ width: "100%", height: "100%" }} />
           {!ready && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">地圖載入中…</span>
+              <span className="text-sm text-muted-foreground">地图载入中…</span>
             </div>
           )}
         </div>
@@ -378,7 +378,7 @@ function MapPage() {
       <Dialog open={!!draft} onOpenChange={(v) => !v && setDraft(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>確定排期</DialogTitle>
+            <DialogTitle>确定排期</DialogTitle>
           </DialogHeader>
           {draft && (
             <div className="space-y-3">
@@ -396,15 +396,15 @@ function MapPage() {
                 )}
               </div>
               <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground">安裝日期</p>
+                <p className="text-xs text-muted-foreground">安装日期</p>
                 <Input type="date" value={dDate} onChange={(e) => setDDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground">到達時段</p>
+                <p className="text-xs text-muted-foreground">到达时段</p>
                 <TimeRangeSelect value={dTime} onChange={setDTime} />
               </div>
               <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground">安裝隊伍</p>
+                <p className="text-xs text-muted-foreground">安装队伍</p>
                 <Select value={dTeam} onValueChange={setDTeam}>
                   <SelectTrigger>
                     <SelectValue placeholder="未分配" />
@@ -428,14 +428,14 @@ function MapPage() {
             {draft?.status === "scheduled" ? (
               <Button variant="outline" onClick={() => draft && cancelSchedule(draft)}>
                 <X className="size-4" />
-                取消約期
+                取消约期
               </Button>
             ) : (
               <span />
             )}
             <Button onClick={saveSchedule} disabled={savingSchedule}>
               <CalendarPlus className="size-4" />
-              確定排期
+              确定排期
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -462,7 +462,7 @@ function RoutePoint({
       <span className="min-w-0 flex-1 truncate text-xs">
         {order
           ? `${order.customer_name} · ${order.raw_address}${order.customer_phone ? ` · ${order.customer_phone}` : ""}`
-          : "未設定"}
+          : "未设定"}
       </span>
       {order && (
         <button className="text-xs text-muted-foreground hover:text-foreground" onClick={onClear}>

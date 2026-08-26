@@ -14,7 +14,7 @@ export const TIME_OPTIONS: { value: string; label: string }[] = Array.from(
   },
 );
 
-/** install_time 儲存為 "HH:MM-HH:MM"（舊資料可能只有 "HH:MM"） */
+/** install_time 储存为 "HH:MM-HH:MM"（旧资料可能只有 "HH:MM"） */
 export function parseTimeRange(value: string | null | undefined): {
   start: string | null;
   end: string | null;
@@ -37,21 +37,21 @@ export function formatTimeRange(value: string | null | undefined) {
 }
 
 export const STATUS_LABEL: Record<string, string> = {
-  unscheduled: "未約期",
-  scheduled: "已約期",
+  unscheduled: "未约期",
+  scheduled: "已约期",
   completed: "已完成",
 };
 
 export const GEO_LABEL: Record<string, string> = {
   pending: "待解析",
   confirmed: "已定位",
-  failed: "解析失敗",
+  failed: "解析失败",
 };
 
 export const TEAM_TYPE_LABEL: Record<string, string> = {
-  standard: "標準隊（2 人）",
-  large: "加大隊",
-  split: "拆隊",
+  standard: "标准队（2 人）",
+  large: "加大队",
+  split: "拆队",
 };
 
 export function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -81,7 +81,7 @@ export function startOfWeek(d: Date) {
 
 export const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
-/** 今天或之後的已約未完成單／跟進單，以及所有未約期單 */
+/** 今天或之后的已约未完成单／跟进单，以及所有未约期单 */
 export function isUpcoming(o: { status: string; install_date: string | null }) {
   if (o.status === "completed") return false;
   if (!o.install_date) return true;
@@ -89,8 +89,8 @@ export function isUpcoming(o: { status: string; install_date: string | null }) {
 }
 
 export const ORDER_TYPE_LABEL: Record<string, string> = {
-  install: "安裝單",
-  followup: "跟進單",
+  install: "安装单",
+  followup: "跟进单",
 };
 
 export function addDays(dateStr: string, days: number) {
@@ -99,7 +99,7 @@ export function addDays(dateStr: string, days: number) {
   return ymd(d);
 }
 
-/** 安裝單：收訂日期 + 7 日就係約期死線；跟進單冇死線（本身就係急單） */
+/** 安装单：收订日期 + 7 日就系约期死线；跟进单冇死线（本身就系急单） */
 export function deadlineOf(o: {
   order_type: string;
   deposit_date: string | null;
@@ -141,7 +141,7 @@ export const URGENCY_TONE: Record<UrgencyLevel, string> = {
   none: "border-border bg-muted text-muted-foreground",
 };
 
-/** 排序權重：越細越急 */
+/** 排序权重：越细越急 */
 export function urgencyRank(o: {
   order_type: string;
   deposit_date: string | null;
@@ -149,8 +149,8 @@ export function urgencyRank(o: {
 }) {
   const u = urgencyOf(o);
   if (o.status !== "unscheduled") return 9000;
-  if (o.order_type === "followup") return -9999; // 跟進單永遠置頂
-  if (u.days === null) return 8000; // 冇收訂日期，排喺最後但喺已約期之前
+  if (o.order_type === "followup") return -9999; // 跟进单永远置顶
+  if (u.days === null) return 8000; // 冇收订日期，排喺最后但喺已约期之前
   return u.days;
 }
 

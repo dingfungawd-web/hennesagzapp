@@ -29,15 +29,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/schedule")({
   head: () => ({
     meta: [
-      { title: "排程日曆 — 漢紗排程調度台" },
+      { title: "排程日历 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "週視圖與日視圖排程日曆，直接調整安裝日期、到達時段與負責隊伍。",
+        content: "周视图与日视图排程日历，直接调整安装日期、到达时段与负责队伍。",
       },
-      { property: "og:title", content: "排程日曆 — 漢紗排程調度台" },
+      { property: "og:title", content: "排程日历 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "週視圖與日視圖排程日曆，直接調整安裝日期、到達時段與負責隊伍。",
+        content: "周视图与日视图排程日历，直接调整安装日期、到达时段与负责队伍。",
       },
     ],
   }),
@@ -98,26 +98,26 @@ function SchedulePage() {
   };
 
   const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name;
-  const viewLabel = view === "week" ? "週視圖" : view === "day" ? "日視圖" : "月視圖";
+  const viewLabel = view === "week" ? "周视图" : view === "day" ? "日视图" : "月视图";
 
   return (
     <AppShell
-      title="排程日曆"
+      title="排程日历"
       subtitle={
         view === "month"
-          ? `${anchor.getFullYear()} 年 ${anchor.getMonth() + 1} 月 · ${unscheduled.length} 張未排程`
-          : `${viewLabel} · ${unscheduled.length} 張未排程`
+          ? `${anchor.getFullYear()} 年 ${anchor.getMonth() + 1} 月 · ${unscheduled.length} 张未排程`
+          : `${viewLabel} · ${unscheduled.length} 张未排程`
       }
       actions={
         <>
-          <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="上一頁">
+          <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="上一页">
             <ChevronLeft className="size-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={() => setAnchor(new Date())}>
             <CalendarDays className="size-4" />
             今日
           </Button>
-          <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="下一頁">
+          <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="下一页">
             <ChevronRight className="size-4" />
           </Button>
           <Select value={view} onValueChange={(v) => setView(v as "week" | "day" | "month")}>
@@ -125,9 +125,9 @@ function SchedulePage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="month">月視圖</SelectItem>
-              <SelectItem value="week">週視圖</SelectItem>
-              <SelectItem value="day">日視圖</SelectItem>
+              <SelectItem value="month">月视图</SelectItem>
+              <SelectItem value="week">周视图</SelectItem>
+              <SelectItem value="day">日视图</SelectItem>
             </SelectContent>
           </Select>
         </>
@@ -138,7 +138,7 @@ function SchedulePage() {
         {view === "month" && (
           <div className="hidden grid-cols-7 gap-2 text-center text-xs text-muted-foreground md:grid">
             {WEEKDAYS.map((w) => (
-              <span key={w}>週{w}</span>
+              <span key={w}>周{w}</span>
             ))}
           </div>
         )}
@@ -172,7 +172,7 @@ function SchedulePage() {
                     {d.getMonth() + 1}/{d.getDate()}
                     {view !== "month" && (
                       <span className="ml-1.5 text-xs text-muted-foreground">
-                        週{WEEKDAYS[(d.getDay() + 6) % 7]}
+                        周{WEEKDAYS[(d.getDay() + 6) % 7]}
                       </span>
                     )}
                   </p>
@@ -202,7 +202,7 @@ function SchedulePage() {
                     ))}
                     {list.length > 4 && (
                       <p className="px-1 text-[11px] text-muted-foreground">
-                        +{list.length - 4} 張
+                        +{list.length - 4} 张
                       </p>
                     )}
                   </div>
@@ -245,7 +245,7 @@ function SchedulePage() {
                           })
                         }
                       >
-                        取消約期
+                        取消约期
                       </Button>
 
                     </div>
@@ -263,7 +263,7 @@ function SchedulePage() {
 
 
         <aside className="rounded-lg border border-border bg-card p-3">
-          <p className="mb-2 text-sm font-medium">未排程訂單（{unscheduled.length}）</p>
+          <p className="mb-2 text-sm font-medium">未排程订单（{unscheduled.length}）</p>
           <div className="max-h-[70vh] space-y-2 overflow-auto">
             {unscheduled.map((o) => (
               <div key={o.id} className="rounded border border-border bg-surface p-2">
@@ -291,7 +291,7 @@ function SchedulePage() {
               </div>
             ))}
             {unscheduled.length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">全部訂單已排程 🎉</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">全部订单已排程 🎉</p>
             )}
           </div>
         </aside>
@@ -300,11 +300,11 @@ function SchedulePage() {
       <Dialog open={!!draftId} onOpenChange={(v) => !v && setDraftId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>安排約期</DialogTitle>
+            <DialogTitle>安排约期</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">安裝日期</Label>
+              <Label className="text-xs text-muted-foreground">安装日期</Label>
               <Input
                 type="date"
                 value={draftDate}
@@ -312,11 +312,11 @@ function SchedulePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">到達時段（起 — 迄）</Label>
+              <Label className="text-xs text-muted-foreground">到达时段（起 — 迄）</Label>
               <TimeRangeSelect value={draftTime} onChange={setDraftTime} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">負責隊伍</Label>
+              <Label className="text-xs text-muted-foreground">负责队伍</Label>
               <Select
                 value={draftTeam ?? "none"}
                 onValueChange={(v) => setDraftTeam(v === "none" ? null : v)}
@@ -355,7 +355,7 @@ function SchedulePage() {
                 setDraftId(null);
               }}
             >
-              確認約期
+              确认约期
             </Button>
           </DialogFooter>
         </DialogContent>

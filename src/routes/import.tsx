@@ -15,15 +15,15 @@ import { useImportBatches } from "@/lib/queries";
 export const Route = createFileRoute("/import")({
   head: () => ({
     meta: [
-      { title: "Excel 匯入 — 漢紗排程調度台" },
+      { title: "Excel 汇入 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "上載 Excel 訂單表，自動對應欄位並批次建立安裝訂單，附匯入批次紀錄。",
+        content: "上载 Excel 订单表，自动对应栏位并批次建立安装订单，附汇入批次纪录。",
       },
-      { property: "og:title", content: "Excel 匯入 — 漢紗排程調度台" },
+      { property: "og:title", content: "Excel 汇入 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "上載 Excel 訂單表，自動對應欄位並批次建立安裝訂單，附匯入批次紀錄。",
+        content: "上载 Excel 订单表，自动对应栏位并批次建立安装订单，附汇入批次纪录。",
       },
     ],
   }),
@@ -46,59 +46,76 @@ type Row = {
 };
 
 const HEADER_MAP: Record<string, keyof Row> = {
-  訂單號: "order_no",
   订单号: "order_no",
-  工程編號: "order_no",
+  訂單號: "order_no",
   工程编号: "order_no",
-  客戶姓名: "customer_name",
+  工程編號: "order_no",
   客户姓名: "customer_name",
+  客戶姓名: "customer_name",
   姓名: "customer_name",
-  電話: "customer_phone",
   电话: "customer_phone",
-  聯絡電話: "customer_phone",
+  電話: "customer_phone",
   联络电话: "customer_phone",
+  聯絡電話: "customer_phone",
   地址: "raw_address",
-  客戶地址: "raw_address",
   客户地址: "raw_address",
-  單位: "raw_address",
+  客戶地址: "raw_address",
   单位: "raw_address",
-  訂單內容: "order_content",
+  單位: "raw_address",
   订单内容: "order_content",
+  訂單內容: "order_content",
   度尺日期: "measure_date",
-  收訂日期: "deposit_date",
   收订日期: "deposit_date",
-  安裝日期: "install_date",
+  收訂日期: "deposit_date",
   安装日期: "install_date",
-  備註: "notes",
+  安裝日期: "install_date",
   备注: "notes",
+  備註: "notes",
 };
 
-/** 這些欄位屬於資料欄，其餘數字欄視為產品數量 */
+const SURNAME_KEYS = new Set(["客户姓氏", "客戶姓氏"]);
+const TITLE_KEYS = new Set(["客户称呼", "客戶稱呼"]);
+const DISTRICT_KEYS = new Set(["地区", "地區"]);
+
+/** 这些栏位属于资料栏，其余数字栏视为产品数量 */
 const NON_PRODUCT_KEYS = new Set([
   ...Object.keys(HEADER_MAP),
-  "客戶姓氏",
-  "客户姓氏",
-  "客戶稱呼",
-  "客户称呼",
-  "地區",
-  "地区",
+  ...SURNAME_KEYS,
+  ...TITLE_KEYS,
+  ...DISTRICT_KEYS,
+  "接单日期",
   "接單日期",
+  "接单同事",
   "接單同事",
+  "订金",
   "訂金",
+  "订金收款方式",
   "訂金收款方式",
+  "已付余款",
   "已付餘款",
+  "已付余款方式",
   "已付餘款方式",
+  "跟进日期",
   "跟進日期",
+  "跟进余款",
   "跟進餘款",
+  "跟进余款方式",
   "跟進餘款方式",
+  "余款",
   "餘款",
+  "营业额",
   "營業額",
   "全付折扣",
+  "全单折扣",
   "全單折扣",
+  "保养费",
   "保養費",
+  "保养日期",
   "保養日期",
+  "生意来源",
   "生意來源",
   "度尺人",
+  "安装同事",
   "安裝同事",
   "Invitation Date",
   "Score",
@@ -153,7 +170,7 @@ function ImportPage() {
     }
     const sheet = wb.Sheets[sheetName];
     if (!sheet) {
-      toast.error("讀取工作表失敗");
+      toast.error("读取工作表失败");
       return;
     }
     const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
@@ -181,9 +198,9 @@ function ImportPage() {
       for (const [rawKey, value] of Object.entries(raw)) {
         const key = rawKey.trim();
         const field = HEADER_MAP[key];
-        if (key === "客戶姓氏" || key === "客户姓氏") surname = String(value ?? "").trim();
-        else if (key === "客戶稱呼" || key === "客户称呼") title = String(value ?? "").trim();
-        else if (key === "地區" || key === "地区") district = String(value ?? "").trim();
+        if (SURNAME_KEYS.has(key)) surname = String(value ?? "").trim();
+        else if (TITLE_KEYS.has(key)) title = String(value ?? "").trim();
+        else if (DISTRICT_KEYS.has(key)) district = String(value ?? "").trim();
         else if (!field && !NON_PRODUCT_KEYS.has(key)) {
           const n = Number(String(value ?? "").trim());
           if (Number.isFinite(n) && n > 0) products.push(`${key} x${n}`);
@@ -212,7 +229,7 @@ function ImportPage() {
     }
     setFileName(file.name);
     setRows(parsed);
-    toast.success(`解析到 ${parsed.length} 行有效資料`);
+    toast.success(`解析到 ${parsed.length} 行有效资料`);
   };
 
 
@@ -231,7 +248,7 @@ function ImportPage() {
       .single();
     if (batchErr || !batch) {
       setSaving(false);
-      toast.error("建立匯入批次失敗");
+      toast.error("建立汇入批次失败");
       return;
     }
     const inserted: { id: string; raw_address: string; status: string; install_date: string | null }[] = [];
@@ -255,10 +272,10 @@ function ImportPage() {
       .eq("id", batch.id);
     setSaving(false);
     if (error) {
-      toast.error("匯入失敗：" + error.message);
+      toast.error("汇入失败：" + error.message);
       return;
     }
-    toast.success(`已匯入 ${rows.length} 張訂單，正在自動解析地址…`);
+    toast.success(`已汇入 ${rows.length} 张订单，正在自动解析地址…`);
 
     setRows([]);
     setFileName("");
@@ -271,34 +288,34 @@ function ImportPage() {
     );
     setProgress("");
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (!summary.configured) toast.error("未設定高德 API Key，地址未解析");
-    else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失敗 ${summary.failed}` : ""}`);
+    if (!summary.configured) toast.error("未设定高德 API Key，地址未解析");
+    else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失败 ${summary.failed}` : ""}`);
   };
 
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["訂單號", "客戶姓名", "電話", "地址", "訂單內容", "度尺日期", "備註"],
-      ["A001", "陳先生", "13800000000", "廣州市天河區某小區1棟101", "紗窗 3 樘", "2026-01-10", ""],
+      ["订单号", "客户姓名", "电话", "地址", "订单内容", "度尺日期", "备注"],
+      ["A001", "陈先生", "13800000000", "广州市天河区某小区1栋101", "纱窗 3 樘", "2026-01-10", ""],
     ]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "訂單");
-    XLSX.writeFile(wb, "訂單匯入範本.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "订单");
+    XLSX.writeFile(wb, "订单汇入范本.xlsx");
   };
 
   return (
     <AppShell
-      title="Excel 匯入"
-      subtitle="批次上載訂單表格"
+      title="Excel 汇入"
+      subtitle="批次上载订单表格"
       actions={
         <>
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <Download className="size-4" />
-            下載範本
+            下载范本
           </Button>
           <Button size="sm" onClick={save} disabled={saving || rows.length === 0}>
             <Save className="size-4" />
-            {progress || `匯入 ${rows.length || ""} 張`}
+            {progress || `汇入 ${rows.length || ""} 张`}
           </Button>
         </>
       }
@@ -306,9 +323,9 @@ function ImportPage() {
       <label className="mb-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card p-10 text-center transition-colors hover:border-primary/50">
         <FileSpreadsheet className="size-8 text-muted-foreground" />
         <div>
-          <p className="text-sm font-medium">{fileName || "點擊上載 Excel（.xlsx / .csv）"}</p>
+          <p className="text-sm font-medium">{fileName || "点击上载 Excel（.xlsx / .csv）"}</p>
           <p className="text-xs text-muted-foreground">
-            欄位需包含：客戶姓名、地址（其餘可選）
+            栏位需包含：客户姓名、地址（其余可选）
           </p>
         </div>
         <input
@@ -327,12 +344,12 @@ function ImportPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-3 py-2">客戶</th>
-                <th className="px-3 py-2">電話</th>
+                <th className="px-3 py-2">客户</th>
+                <th className="px-3 py-2">电话</th>
                 <th className="px-3 py-2">地址</th>
-                <th className="px-3 py-2">內容</th>
+                <th className="px-3 py-2">内容</th>
                 <th className="px-3 py-2">度尺</th>
-                <th className="px-3 py-2">安裝</th>
+                <th className="px-3 py-2">安装</th>
               </tr>
             </thead>
             <tbody>
@@ -351,13 +368,13 @@ function ImportPage() {
             </tbody>
           </table>
           {rows.length > 50 && (
-            <p className="px-3 py-2 text-xs text-muted-foreground">只預覽首 50 行…</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">只预览首 50 行…</p>
           )}
         </div>
       )}
 
       <div className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-3 font-display text-sm font-semibold">匯入紀錄</p>
+        <p className="mb-3 font-display text-sm font-semibold">汇入纪录</p>
         <div className="space-y-2">
           {batches.map((b) => (
             <div
@@ -371,7 +388,7 @@ function ImportPage() {
               </span>
             </div>
           ))}
-          {batches.length === 0 && <p className="text-xs text-muted-foreground">未有匯入紀錄</p>}
+          {batches.length === 0 && <p className="text-xs text-muted-foreground">未有汇入纪录</p>}
         </div>
       </div>
     </AppShell>

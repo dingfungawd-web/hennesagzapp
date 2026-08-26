@@ -48,7 +48,7 @@ export const drivingDuration = createServerFn({ method: "POST" })
     if (!apiKey)
       return {
         success: false,
-        message: "未設定高德 API Key" as string | undefined,
+        message: "未设定高德 API Key" as string | undefined,
         minutes: undefined as number | undefined,
         km: undefined as number | undefined,
         text: undefined as string | undefined,

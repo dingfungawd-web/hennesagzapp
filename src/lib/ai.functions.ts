@@ -63,9 +63,9 @@ export const suggestAddress = createServerFn({ method: "POST" })
           { role: "system", content: "你是广佛地区地址补全助手，只输出 JSON，所有文字必须用简体中文。" },
           {
             role: "user",
-            content: `用戶輸入咗一個可能唔完整嘅地址：「${data.rawAddress}」
-請補全成標準完整地址（省市區 + 街道/鎮 + 小區/大廈 + 棟室），最多列 3 個可能。所有輸出文字必須為簡體中文。
-只輸出 JSON：{"suggestions":[{"address":"...","confidence":"high|medium|low","reason":"..."}]}`,
+            content: `用户输入咗一个可能唔完整嘅地址：「${data.rawAddress}」
+请补全成标准完整地址（省市区 + 街道/镇 + 小区/大厦 + 栋室），最多列 3 个可能。所有输出文字必须为简体中文。
+只输出 JSON：{"suggestions":[{"address":"...","confidence":"high|medium|low","reason":"..."}]}`,
           },
         ],
       });
