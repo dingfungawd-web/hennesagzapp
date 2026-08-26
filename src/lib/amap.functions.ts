@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { geocodeOne, fetchDrivingRoute, type GeoResult } from "./amap.server";
 
+// 仅作 Lovable 预览环境的回退：Vercel 生产环境由前端直接读 VITE_AMAP_JS_KEY。
 export const getAmapConfig = createServerFn({ method: "GET" }).handler(async () => {
   const jsKey = process.env["AMAP_JS_KEY"] ?? "";
   const securityCode = process.env["AMAP_JS_SECURITY_CODE"] ?? "";
