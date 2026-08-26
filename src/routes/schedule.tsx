@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ArrowLeft, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
