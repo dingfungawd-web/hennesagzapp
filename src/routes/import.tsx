@@ -303,7 +303,7 @@ function ImportPage() {
       .update({
         status: error ? "failed" : "completed",
         success_count: inserted.length,
-        failed_count: rows.length - inserted.length,
+        failed_count: finalRows.length - inserted.length,
       })
       .eq("id", batch.id);
     setSaving(false);
