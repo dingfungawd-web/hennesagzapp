@@ -74,6 +74,8 @@ const HEADER_MAP: Record<string, keyof Row> = {
   收訂日期: "deposit_date",
   安装日期: "install_date",
   安裝日期: "install_date",
+  跟进日期: "followup_date",
+  跟進日期: "followup_date",
   备注: "notes",
   備註: "notes",
 };
