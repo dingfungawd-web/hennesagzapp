@@ -165,7 +165,7 @@ function OrdersPage() {
   };
 
   const geocodeAll = async () => {
-    const targets = orders.filter((o) => o.geo_status !== "confirmed");
+    const targets = orders.filter((o) => o.geo_status !== "confirmed" && o.raw_address?.trim());
     if (targets.length === 0) {
       toast.info("冇待解析嘅地址");
       return;
@@ -173,38 +173,24 @@ function OrdersPage() {
     setBusy(true);
     const toastId = toast.loading(`解析中… 共 ${targets.length} 单`);
     try {
-      const res = await geocodeAddresses({
-        data: { items: targets.map((o) => ({ id: o.id, address: o.raw_address })) },
-      });
-      if (!res.configured) {
+      const summary = await autoGeocodeOrders(
+        targets.map((o) => ({ id: o.id, address: o.raw_address })),
+        (done, total) => toast.loading(`解析中… ${done}/${total}`, { id: toastId }),
+      );
+      if (!summary.configured) {
         toast.error("未设定高德 API Key", { id: toastId });
         return;
       }
-      let ok = 0;
-      for (const r of res.results) {
-        if (r.ok) {
-          ok++;
-          await supabase
-            .from("orders")
-            .update({
-              latitude: r.lat ?? null,
-              longitude: r.lon ?? null,
-              normalized_address: r.formatted ?? null,
-              geo_status: "confirmed",
-            })
-            .eq("id", r.id);
-        } else {
-          await supabase.from("orders").update({ geo_status: "failed" }).eq("id", r.id);
-        }
-      }
-      toast.success(`解析完成：${ok} 成功 / ${res.results.length - ok} 失败`, { id: toastId });
+      toast.success(`解析完成：${summary.ok} 成功 / ${summary.failed} 失败`, { id: toastId });
       qc.invalidateQueries({ queryKey: ["orders"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "解析失败", { id: toastId });
+      qc.invalidateQueries({ queryKey: ["orders"] });
     } finally {
       setBusy(false);
     }
   };
+
 
 
   return (
