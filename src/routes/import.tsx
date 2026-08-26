@@ -261,8 +261,13 @@ function ImportPage() {
   };
 
 
+  const finalRows = useMemo(() => {
+    const list = rows.map((r) => applyType(r, importType));
+    return list.sort((a, b) => (a.install_date ?? "9999").localeCompare(b.install_date ?? "9999"));
+  }, [rows, importType]);
+
   const save = async () => {
-    if (rows.length === 0) return;
+    if (finalRows.length === 0) return;
     setSaving(true);
     const { data: batch, error: batchErr } = await supabase
       .from("import_batches")
