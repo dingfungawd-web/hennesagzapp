@@ -168,14 +168,24 @@ function SchedulePage() {
                 )}
               >
                 <div className="mb-2 flex items-baseline justify-between">
-                  <p className={cn("text-sm font-medium", isToday && "text-primary")}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnchor(new Date(d));
+                      setView("day");
+                    }}
+                    className={cn(
+                      "text-sm font-medium hover:underline",
+                      isToday && "text-primary",
+                    )}
+                  >
                     {d.getMonth() + 1}/{d.getDate()}
                     {view !== "month" && (
                       <span className="ml-1.5 text-xs text-muted-foreground">
                         周{WEEKDAYS[(d.getDay() + 6) % 7]}
                       </span>
                     )}
-                  </p>
+                  </button>
                   <span className="tabular text-xs text-muted-foreground">{list.length || ""}</span>
                 </div>
                 {view === "month" ? (
@@ -191,13 +201,14 @@ function SchedulePage() {
                           setDraftTeam(o.team_id ?? null);
                         }}
                         className="block w-full truncate rounded bg-surface px-1.5 py-1 text-left text-[11px]"
+                        title={o.raw_address}
                       >
                         {o.install_time ? (
                           <span className="tabular mr-1 text-primary">
                             {o.install_time.split("-")[0]}
                           </span>
                         ) : null}
-                        {o.customer_name}
+                        {o.raw_address}
                       </button>
                     ))}
                     {list.length > 4 && (
@@ -208,19 +219,35 @@ function SchedulePage() {
                   </div>
                 ) : (
                 <div className="space-y-2">
-                  {list.map((o) => (
+                  {list.map((o, idx) => (
                     <div key={o.id} className="rounded border border-border bg-surface p-2">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="truncate text-sm font-medium">{o.customer_name}</p>
+                        <div className="flex min-w-0 items-start gap-2">
+                          <span className="tabular mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 text-[11px] font-medium text-primary">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p
+                              className={cn(
+                                "text-sm leading-snug font-medium",
+                                view === "day" ? "break-words" : "line-clamp-3",
+                              )}
+                            >
+                              {o.raw_address}
+                            </p>
+                            <p className="tabular mt-0.5 text-xs text-muted-foreground">
+                              {o.install_time ? `${formatTimeRange(o.install_time)} · ` : "未定时段 · "}
+                              {o.customer_name}
+                              {o.customer_phone ? ` · ${o.customer_phone}` : ""}
+                            </p>
+                          </div>
+                        </div>
                         {o.team_id && (
                           <Badge variant="outline" className="shrink-0 text-[10px]">
                             {teamName(o.team_id)}
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                        {o.raw_address}
-                      </p>
                       <TimeRangeSelect
                         className="mt-2"
                         compact
@@ -255,6 +282,7 @@ function SchedulePage() {
                   )}
                 </div>
                 )}
+
               </div>
             );
           })}
