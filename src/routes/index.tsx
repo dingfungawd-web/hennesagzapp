@@ -391,7 +391,9 @@ function OrdersPage() {
                   </div>
 
                   <div className="space-y-3">
+                    <AddressEditor order={o} onDone={() => qc.invalidateQueries({ queryKey: ["orders"] })} />
                     <div className="space-y-3">
+
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">安装日期</Label>
                         <Input
