@@ -24,7 +24,7 @@ import {
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders, useTeams } from "@/lib/queries";
-import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
+import { drivingDuration } from "@/lib/amap.functions";
 import { formatTimeRange, isUpcoming, STATUS_LABEL, type Order } from "@/lib/domain";
 
 
