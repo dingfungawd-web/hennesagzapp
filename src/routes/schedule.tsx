@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
+import { useOrders, useTeams, useUpdateOrder, useDeleteOrder } from "@/lib/queries";
 
 import {
   WEEKDAYS,
