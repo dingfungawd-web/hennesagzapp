@@ -14,7 +14,7 @@ function readAsDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("讀取檔案失敗"));
+    reader.onerror = () => reject(new Error("读取档案失败"));
     reader.readAsDataURL(blob);
   });
 }
@@ -24,7 +24,7 @@ async function downscale(dataUrl: string): Promise<string> {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
       el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("圖片解碼失敗"));
+      el.onerror = () => reject(new Error("图片解码失败"));
       el.src = dataUrl;
     });
     const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));

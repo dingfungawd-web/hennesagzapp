@@ -17,13 +17,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "訂單列表", icon: ClipboardList },
-  { to: "/schedule", label: "排程日曆", icon: CalendarRange },
-  { to: "/map", label: "地圖路線", icon: MapIcon },
-  { to: "/cluster", label: "智能配對", icon: Sparkles },
-  { to: "/screenshot-import", label: "截圖匯入", icon: Camera },
-  { to: "/import", label: "Excel 匯入", icon: FileSpreadsheet },
-  { to: "/technicians", label: "師傅隊伍", icon: Users },
+  { to: "/", label: "订单列表", icon: ClipboardList },
+  { to: "/schedule", label: "排程日历", icon: CalendarRange },
+  { to: "/map", label: "地图路线", icon: MapIcon },
+  { to: "/cluster", label: "智能配对", icon: Sparkles },
+  { to: "/screenshot-import", label: "截图汇入", icon: Camera },
+  { to: "/import", label: "Excel 汇入", icon: FileSpreadsheet },
+  { to: "/technicians", label: "师傅队伍", icon: Users },
 ] as const;
 
 export function AppShell({
@@ -62,7 +62,7 @@ export function AppShell({
   if (!checked || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">載入中…</p>
+        <p className="text-sm text-muted-foreground">载入中…</p>
       </div>
     );
   }
@@ -77,15 +77,15 @@ export function AppShell({
       >
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
           <div className="flex size-8 items-center justify-center rounded bg-primary font-display text-sm font-bold text-primary-foreground">
-            漢
+            汉
           </div>
           <div className="leading-tight">
-            <p className="font-display text-sm font-semibold text-sidebar-foreground">漢紗調度台</p>
-            <p className="text-[11px] text-muted-foreground">安裝排程系統</p>
+            <p className="font-display text-sm font-semibold text-sidebar-foreground">汉纱调度台</p>
+            <p className="text-[11px] text-muted-foreground">安装排程系统</p>
           </div>
         </div>
         <p className="px-5 pt-5 pb-2 text-[11px] font-medium tracking-widest text-muted-foreground">
-          功能導覽
+          功能导览
         </p>
         <nav className="flex-1 space-y-0.5 px-3">
           {NAV.map((item) => {
@@ -127,7 +127,7 @@ export function AppShell({
 
       {navOpen && (
         <button
-          aria-label="關閉選單"
+          aria-label="关闭选单"
           className="fixed inset-0 z-30 bg-background/70 lg:hidden"
           onClick={() => setNavOpen(false)}
         />
@@ -140,7 +140,7 @@ export function AppShell({
             size="icon"
             className="lg:hidden"
             onClick={() => setNavOpen(true)}
-            aria-label="開啟選單"
+            aria-label="开启选单"
           >
             <Menu className="size-5" />
           </Button>

@@ -3,7 +3,7 @@ import { geocodeAddresses } from "@/lib/amap.functions";
 
 export type GeocodeSummary = { configured: boolean; ok: number; failed: number };
 
-/** 對指定訂單自動做地址解析並寫回資料庫 */
+/** 对指定订单自动做地址解析并写回资料库 */
 export async function autoGeocodeOrders(
   items: { id: string; address: string }[],
   onProgress?: (done: number, total: number) => void,

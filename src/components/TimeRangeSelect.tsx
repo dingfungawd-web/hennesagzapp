@@ -37,7 +37,7 @@ export function TimeRangeSelect({ value, onChange, className, compact }: Props) 
     <div className={cn("grid grid-cols-2 gap-2", className)}>
       <Select value={start ?? "none"} onValueChange={setStart}>
         <SelectTrigger className={triggerCls}>
-          <SelectValue placeholder="開始" />
+          <SelectValue placeholder="开始" />
         </SelectTrigger>
         <SelectContent className="max-h-64">
           <SelectItem value="none">未指定</SelectItem>
@@ -50,7 +50,7 @@ export function TimeRangeSelect({ value, onChange, className, compact }: Props) 
       </Select>
       <Select value={end ?? "none"} onValueChange={setEnd} disabled={!start}>
         <SelectTrigger className={triggerCls}>
-          <SelectValue placeholder="結束" />
+          <SelectValue placeholder="结束" />
         </SelectTrigger>
         <SelectContent className="max-h-64">
           <SelectItem value="none">未指定</SelectItem>

@@ -56,10 +56,10 @@ export async function fetchDrivingRoute(
         success: true,
         minutes,
         km: Number(km.toFixed(1)),
-        text: `${minutes} 分鐘 · ${km.toFixed(1)} km`,
+        text: `${minutes} 分钟 · ${km.toFixed(1)} km`,
       };
     }
-    return { success: false, message: "無法取得路線" };
+    return { success: false, message: "无法取得路线" };
   } catch (e) {
     return { success: false, message: String(e) };
   }

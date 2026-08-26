@@ -18,15 +18,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/screenshot-import")({
   head: () => ({
     meta: [
-      { title: "截圖匯入 — 漢紗排程調度台" },
+      { title: "截图汇入 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "批量上載訂單截圖（支援 iPhone HEIC），AI 自動辨識客戶、地址與訂單內容並建立訂單。",
+        content: "批量上载订单截图（支援 iPhone HEIC），AI 自动辨识客户、地址与订单内容并建立订单。",
       },
-      { property: "og:title", content: "截圖匯入 — 漢紗排程調度台" },
+      { property: "og:title", content: "截图汇入 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "批量上載訂單截圖（支援 iPhone HEIC），AI 自動辨識客戶、地址與訂單內容並建立訂單。",
+        content: "批量上载订单截图（支援 iPhone HEIC），AI 自动辨识客户、地址与订单内容并建立订单。",
       },
     ],
   }),
@@ -57,10 +57,10 @@ type Item = {
 };
 
 const STATUS_META: Record<Status, { label: string; className: string }> = {
-  pending: { label: "待辨識", className: "text-muted-foreground" },
-  analyzing: { label: "辨識中", className: "text-primary" },
-  done: { label: "已辨識", className: "text-primary" },
-  error: { label: "失敗", className: "text-destructive" },
+  pending: { label: "待辨识", className: "text-muted-foreground" },
+  analyzing: { label: "辨识中", className: "text-primary" },
+  done: { label: "已辨识", className: "text-primary" },
+  error: { label: "失败", className: "text-destructive" },
   saved: { label: "已建立", className: "text-success" },
 };
 
@@ -92,7 +92,7 @@ function ScreenshotImportPage() {
           order: { ...blank },
         });
       } catch (e) {
-        toast.error(`${file.name} 讀取失敗：${e instanceof Error ? e.message : "未知錯誤"}`);
+        toast.error(`${file.name} 读取失败：${e instanceof Error ? e.message : "未知错误"}`);
       }
     }
     setItems((prev) => [...prev, ...added]);
@@ -100,7 +100,7 @@ function ScreenshotImportPage() {
     const first = added[0];
     if (first && !selectedId) setSelectedId(first.id);
     if (added.length) {
-      toast.success(`已加入 ${added.length} 張截圖，開始辨識…`);
+      toast.success(`已加入 ${added.length} 张截图，开始辨识…`);
       void runQueue(added);
     }
   };
@@ -110,13 +110,13 @@ function ScreenshotImportPage() {
     try {
       const res = await analyzeScreenshot({ data: { imageDataUrl: item.preview } });
       if (!res.success || !res.order) {
-        patch(item.id, { status: "error", error: res.error ?? "辨識失敗" });
+        patch(item.id, { status: "error", error: res.error ?? "辨识失败" });
         return false;
       }
       patch(item.id, { status: "done", order: res.order });
       return true;
     } catch (e) {
-      patch(item.id, { status: "error", error: e instanceof Error ? e.message : "辨識失敗" });
+      patch(item.id, { status: "error", error: e instanceof Error ? e.message : "辨识失败" });
       return false;
     }
   };
@@ -129,13 +129,13 @@ function ScreenshotImportPage() {
       if (await analyzeOne(item)) ok += 1;
     }
     setRunning(false);
-    toast.success(`辨識完成：成功 ${ok} / ${targets.length}`);
+    toast.success(`辨识完成：成功 ${ok} / ${targets.length}`);
   };
 
   const analyzeAll = async () => {
     const targets = items.filter((i) => i.status === "pending" || i.status === "error");
     if (targets.length === 0) {
-      toast.info("冇待辨識嘅截圖");
+      toast.info("冇待辨识嘅截图");
       return;
     }
     await runQueue(targets);
@@ -147,7 +147,7 @@ function ScreenshotImportPage() {
       (i) => i.status === "done" && i.order.customerName && i.order.rawAddress,
     );
     if (targets.length === 0) {
-      toast.error("冇可建立嘅訂單（需要客戶姓名同地址）");
+      toast.error("冇可建立嘅订单（需要客户姓名同地址）");
       return;
     }
     setSaving(true);
@@ -169,13 +169,13 @@ function ScreenshotImportPage() {
       .select("id, raw_address");
     if (error) {
       setSaving(false);
-      toast.error("儲存失敗：" + error.message);
+      toast.error("储存失败：" + error.message);
       return;
     }
     setItems((prev) =>
       prev.map((i) => (targets.some((t) => t.id === i.id) ? { ...i, status: "saved" } : i)),
     );
-    toast.success(`已建立 ${targets.length} 張訂單，正在自動解析地址…`);
+    toast.success(`已建立 ${targets.length} 张订单，正在自动解析地址…`);
     qc.invalidateQueries({ queryKey: ["orders"] });
 
     const summary = await autoGeocodeOrders(
@@ -183,10 +183,10 @@ function ScreenshotImportPage() {
     );
     setSaving(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (!summary.configured) toast.error("未設定高德 API Key，地址未解析");
+    if (!summary.configured) toast.error("未设定高德 API Key，地址未解析");
     else
       toast.success(
-        `地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失敗 ${summary.failed}` : ""}`,
+        `地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失败 ${summary.failed}` : ""}`,
       );
   };
 
@@ -208,17 +208,17 @@ function ScreenshotImportPage() {
 
   return (
     <AppShell
-      title="截圖匯入"
-      subtitle={`批量上載截圖（支援 HEIC），AI 自動抽取欄位 · 共 ${items.length} 張`}
+      title="截图汇入"
+      subtitle={`批量上载截图（支援 HEIC），AI 自动抽取栏位 · 共 ${items.length} 张`}
       actions={
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={analyzeAll} disabled={running || !pendingCount}>
             <Sparkles className="size-4" />
-            {running ? "辨識中…" : `全部辨識${pendingCount ? ` (${pendingCount})` : ""}`}
+            {running ? "辨识中…" : `全部辨识${pendingCount ? ` (${pendingCount})` : ""}`}
           </Button>
           <Button size="sm" onClick={saveAll} disabled={saving || !readyCount}>
             <Save className="size-4" />
-            {saving ? "建立中…" : `建立訂單${readyCount ? ` (${readyCount})` : ""}`}
+            {saving ? "建立中…" : `建立订单${readyCount ? ` (${readyCount})` : ""}`}
           </Button>
         </div>
       }
@@ -228,15 +228,15 @@ function ScreenshotImportPage() {
           <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-surface p-6 text-center transition-colors hover:border-primary/50">
             <Camera className="size-8 text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium">點擊上載截圖（可多選）</p>
+              <p className="text-sm font-medium">点击上载截图（可多选）</p>
               <p className="text-xs text-muted-foreground">
-                支援 PNG / JPG / HEIC，iPhone 相片自動轉檔
+                支援 PNG / JPG / HEIC，iPhone 相片自动转档
               </p>
             </div>
             {loadingFiles && (
               <span className="flex items-center gap-1.5 text-xs text-primary">
                 <Loader2 className="size-3.5 animate-spin" />
-                處理檔案中…
+                处理档案中…
               </span>
             )}
             <input
@@ -266,7 +266,7 @@ function ScreenshotImportPage() {
                 >
                   <img
                     src={item.preview}
-                    alt={`截圖 ${item.name}`}
+                    alt={`截图 ${item.name}`}
                     className="size-12 shrink-0 rounded object-cover"
                   />
                   <div className="min-w-0 flex-1">
@@ -279,12 +279,12 @@ function ScreenshotImportPage() {
                             : "bg-primary/20 text-primary",
                         )}
                       >
-                        {item.order.orderType === "followup" ? "跟進" : "安裝"}
+                        {item.order.orderType === "followup" ? "跟进" : "安装"}
                       </span>
                       {item.order.customerName || item.name}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {item.order.rawAddress || item.error || "尚未辨識"}
+                      {item.order.rawAddress || item.error || "尚未辨识"}
                     </p>
                   </div>
                   <span className={cn("shrink-0 text-xs", meta.className)}>
@@ -321,7 +321,7 @@ function ScreenshotImportPage() {
             })}
             {items.length === 0 && (
               <p className="rounded-lg border border-border bg-card p-4 text-center text-xs text-muted-foreground">
-                未有截圖，上載後可一次過批量辨識。
+                未有截图，上载后可一次过批量辨识。
               </p>
             )}
           </div>
@@ -330,7 +330,7 @@ function ScreenshotImportPage() {
         {selected ? (
           <div className="space-y-3 rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-display text-sm font-semibold">辨識結果（可修改）</p>
+              <p className="font-display text-sm font-semibold">辨识结果（可修改）</p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{STATUS_META[selected.status].label}</Badge>
                 <Button
@@ -340,7 +340,7 @@ function ScreenshotImportPage() {
                   onClick={() => void analyzeOne(selected)}
                 >
                   <Sparkles className="size-4" />
-                  重新辨識
+                  重新辨识
                 </Button>
               </div>
             </div>
@@ -349,12 +349,12 @@ function ScreenshotImportPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <img
                 src={selected.preview}
-                alt={`訂單截圖 ${selected.name}`}
+                alt={`订单截图 ${selected.name}`}
                 className="max-h-[52vh] w-full rounded border border-border object-contain"
               />
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>訂單類型 *</Label>
+                  <Label>订单类型 *</Label>
                   <div className="flex gap-2">
                     {(["install", "followup"] as const).map((t) => (
                       <Button
@@ -364,14 +364,14 @@ function ScreenshotImportPage() {
                         variant={selected.order.orderType === t ? "default" : "outline"}
                         onClick={() => updateOrder(selected.id, { orderType: t })}
                       >
-                        {t === "install" ? "安裝單" : "跟進單"}
+                        {t === "install" ? "安装单" : "跟进单"}
                       </Button>
                     ))}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
-                    label="訂單號"
+                    label="订单号"
                     value={selected.order.orderNo}
                     onChange={(v) => updateOrder(selected.id, { orderNo: v })}
                   />
@@ -382,18 +382,18 @@ function ScreenshotImportPage() {
                     onChange={(v) => updateOrder(selected.id, { measureDate: v })}
                   />
                   <FormField
-                    label="客戶姓名 *"
+                    label="客户姓名 *"
                     value={selected.order.customerName}
                     onChange={(v) => updateOrder(selected.id, { customerName: v })}
                   />
                   <FormField
-                    label="電話"
+                    label="电话"
                     value={selected.order.customerPhone}
                     onChange={(v) => updateOrder(selected.id, { customerPhone: v })}
                   />
                   {selected.order.orderType === "install" && (
                     <FormField
-                      label="收訂日期（+7 日為死線）"
+                      label="收订日期（+7 日为死线）"
                       type="date"
                       value={selected.order.depositDate}
                       onChange={(v) => updateOrder(selected.id, { depositDate: v })}
@@ -409,7 +409,7 @@ function ScreenshotImportPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>訂單內容</Label>
+                  <Label>订单内容</Label>
                   <Textarea
                     rows={2}
                     value={selected.order.orderContent}
@@ -417,7 +417,7 @@ function ScreenshotImportPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>備註</Label>
+                  <Label>备注</Label>
                   <Textarea
                     rows={2}
                     value={selected.order.notes}
@@ -429,7 +429,7 @@ function ScreenshotImportPage() {
           </div>
         ) : (
           <div className="flex min-h-64 items-center justify-center rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-            揀左邊一張截圖嚟核對資料
+            拣左边一张截图嚟核对资料
           </div>
         )}
       </div>

@@ -25,15 +25,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/cluster")({
   head: () => ({
     meta: [
-      { title: "智能配對 — 漢紗排程調度台" },
+      { title: "智能配对 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，逐張填好再一鍵確認排程。",
+        content: "逐张未约期订单展开，睇最接近嘅 10 张未完成订单，逐张填好再一键确认排程。",
       },
-      { property: "og:title", content: "智能配對 — 漢紗排程調度台" },
+      { property: "og:title", content: "智能配对 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "逐張未約期訂單展開，睇最接近嘅 10 張未完成訂單，逐張填好再一鍵確認排程。",
+        content: "逐张未约期订单展开，睇最接近嘅 10 张未完成订单，逐张填好再一键确认排程。",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -122,13 +122,13 @@ function ClusterPage() {
       for (const id of pickedIds) next[id] = { ...src };
       return next;
     });
-    toast.success(`已複製排期到 ${pickedIds.length} 張訂單`);
+    toast.success(`已复制排期到 ${pickedIds.length} 张订单`);
   };
 
   const confirmAll = async () => {
     const targets = pickedIds.filter((id) => drafts[id]?.date);
     if (targets.length === 0) {
-      toast.error("請剔選訂單並填好安裝日期");
+      toast.error("请剔选订单并填好安装日期");
       return;
     }
     setSaving(true);
@@ -148,8 +148,8 @@ function ClusterPage() {
     }
     setSaving(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (failed) toast.error(`${failed} 張訂單套用失敗`);
-    else toast.success(`已確認 ${targets.length} 張訂單嘅排程`);
+    if (failed) toast.error(`${failed} 张订单套用失败`);
+    else toast.success(`已确认 ${targets.length} 张订单嘅排程`);
   };
 
   const renderRow = (o: Order, dist?: number, isMain = false) => {
@@ -168,7 +168,7 @@ function ClusterPage() {
             onCheckedChange={(v) => setPicked((p) => ({ ...p, [o.id]: !!v }))}
           />
           {isMain ? (
-            <Badge className="shrink-0 text-[10px]">主體</Badge>
+            <Badge className="shrink-0 text-[10px]">主体</Badge>
           ) : (
             <MapPin className="size-4 shrink-0 text-primary" />
           )}
@@ -199,7 +199,7 @@ function ClusterPage() {
             size="sm"
             variant="ghost"
             className="h-7 shrink-0 px-2 text-xs"
-            title="隱藏（更新頁面後回復）"
+            title="隐藏（更新页面后回复）"
             onClick={() => setHidden((h) => ({ ...h, [o.id]: true }))}
           >
             <EyeOff className="size-3.5" />
@@ -240,13 +240,13 @@ function ClusterPage() {
 
   return (
     <AppShell
-      title="智能配對"
-      subtitle={`共 ${unscheduledCount} 張未約期訂單${hiddenCount ? ` · 已隱藏 ${hiddenCount}` : ""}`}
+      title="智能配对"
+      subtitle={`共 ${unscheduledCount} 张未约期订单${hiddenCount ? ` · 已隐藏 ${hiddenCount}` : ""}`}
       actions={
         hiddenCount > 0 ? (
           <Button size="sm" variant="outline" onClick={() => setHidden({})}>
             <Eye className="size-4" />
-            取消隱藏（{hiddenCount}）
+            取消隐藏（{hiddenCount}）
           </Button>
         ) : undefined
       }
@@ -290,12 +290,12 @@ function ClusterPage() {
                 <div className="border-t border-border p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">
-                      剔選要一齊約嘅訂單，逐張填好日期／時段／隊伍，最後一鍵確認
+                      剔选要一齐约嘅订单，逐张填好日期／时段／队伍，最后一键确认
                     </p>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => copyToPicked(o.id)}>
                         <CopyCheck className="size-4" />
-                        主體排期套用到已剔
+                        主体排期套用到已剔
                       </Button>
                       <Button
                         size="sm"
@@ -306,7 +306,7 @@ function ClusterPage() {
                           )
                         }
                       >
-                        全部剔選
+                        全部剔选
                       </Button>
                     </div>
                   </div>
@@ -315,10 +315,10 @@ function ClusterPage() {
                     {renderRow(o, undefined, true)}
                     {o.latitude == null ? (
                       <p className="text-sm text-muted-foreground">
-                        呢張單未有經緯度，請先喺訂單頁做地址解析。
+                        呢张单未有经纬度，请先喺订单页做地址解析。
                       </p>
                     ) : near.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">附近未有其他未完成訂單。</p>
+                      <p className="text-sm text-muted-foreground">附近未有其他未完成订单。</p>
                     ) : (
                       near.map(({ order: n, dist }) => renderRow(n, dist))
                     )}
@@ -326,11 +326,11 @@ function ClusterPage() {
 
                   <div className="mt-3 flex items-center justify-end gap-3">
                     <span className="text-xs text-muted-foreground">
-                      已剔選 {pickedIds.length} 張
+                      已剔选 {pickedIds.length} 张
                     </span>
                     <Button onClick={confirmAll} disabled={saving}>
                       <CheckCheck className="size-4" />
-                      一鍵確認排程
+                      一键确认排程
                     </Button>
                   </div>
                 </div>
@@ -340,7 +340,7 @@ function ClusterPage() {
         })}
         {list.length === 0 && (
           <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-            暫時未有未約期訂單。
+            暂时未有未约期订单。
           </p>
         )}
       </div>

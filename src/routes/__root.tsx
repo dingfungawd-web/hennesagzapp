@@ -18,14 +18,14 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">找不到頁面</h2>
-        <p className="mt-2 text-sm text-muted-foreground">呢個頁面唔存在或者已經移除咗。</p>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">找不到页面</h2>
+        <p className="mt-2 text-sm text-muted-foreground">呢个页面唔存在或者已经移除咗。</p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            返回訂單
+            返回订单
           </Link>
         </div>
       </div>
@@ -43,8 +43,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">頁面載入失敗</h1>
-        <p className="mt-2 text-sm text-muted-foreground">系統出咗少少問題，可以重試或者返回主頁。</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">页面载入失败</h1>
+        <p className="mt-2 text-sm text-muted-foreground">系统出咗少少问题，可以重试或者返回主页。</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -53,13 +53,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            重試
+            重试
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            返回主頁
+            返回主页
           </a>
         </div>
       </div>
@@ -72,8 +72,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "漢紗排程調度台" },
-      { name: "description", content: "紗窗安裝訂單、排程、路線與師傅隊伍的一體化調度系統。" },
+      { title: "汉纱排程调度台" },
+      { name: "description", content: "纱窗安装订单、排程、路线与师傅队伍的一体化调度系统。" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

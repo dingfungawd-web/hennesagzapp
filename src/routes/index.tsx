@@ -51,15 +51,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "約期提醒 — 漢紗排程調度台" },
+      { title: "约期提醒 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "以死線排序嘅約期提醒列表：跟進單置頂、安裝單收訂 +7 日死線，逾期同緊急自動標色。",
+        content: "以死线排序嘅约期提醒列表：跟进单置顶、安装单收订 +7 日死线，逾期同紧急自动标色。",
       },
-      { property: "og:title", content: "約期提醒 — 漢紗排程調度台" },
+      { property: "og:title", content: "约期提醒 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "以死線排序嘅約期提醒列表：跟進單置頂、安裝單收訂 +7 日死線，逾期同緊急自動標色。",
+        content: "以死线排序嘅约期提醒列表：跟进单置顶、安装单收订 +7 日死线，逾期同紧急自动标色。",
       },
     ],
   }),
@@ -87,9 +87,9 @@ function reminderText(
   o: { order_type: string; status: string; deposit_date: string | null },
   u: ReturnType<typeof urgencyOf>,
 ) {
-  if (o.status !== "unscheduled") return "已處理";
-  if (o.order_type === "followup") return "跟進急單";
-  if (!u.deadline) return "未有收訂日期";
+  if (o.status !== "unscheduled") return "已处理";
+  if (o.order_type === "followup") return "跟进急单";
+  if (!u.deadline) return "未有收订日期";
   if (u.days === null) return u.deadline;
   if (u.days < 0) return `逾期 ${Math.abs(u.days)} 日（${u.deadline}）`;
   if (u.days === 0) return `今日到期（${u.deadline}）`;
@@ -133,7 +133,7 @@ function OrdersPage() {
 
   const createOrder = async () => {
     if (!form.customer_name || !form.raw_address) {
-      toast.error("客戶姓名同地址係必填");
+      toast.error("客户姓名同地址系必填");
       return;
     }
     setBusy(true);
@@ -149,10 +149,10 @@ function OrdersPage() {
     });
     setBusy(false);
     if (error) {
-      toast.error("新增失敗：" + error.message);
+      toast.error("新增失败：" + error.message);
       return;
     }
-    toast.success("已新增訂單");
+    toast.success("已新增订单");
     setForm(emptyForm);
     setCreateOpen(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
@@ -165,13 +165,13 @@ function OrdersPage() {
       return;
     }
     setBusy(true);
-    const toastId = toast.loading(`解析中… 共 ${targets.length} 單`);
+    const toastId = toast.loading(`解析中… 共 ${targets.length} 单`);
     try {
       const res = await geocodeAddresses({
         data: { items: targets.map((o) => ({ id: o.id, address: o.raw_address })) },
       });
       if (!res.configured) {
-        toast.error("未設定高德 API Key", { id: toastId });
+        toast.error("未设定高德 API Key", { id: toastId });
         return;
       }
       let ok = 0;
@@ -191,10 +191,10 @@ function OrdersPage() {
           await supabase.from("orders").update({ geo_status: "failed" }).eq("id", r.id);
         }
       }
-      toast.success(`解析完成：${ok} 成功 / ${res.results.length - ok} 失敗`, { id: toastId });
+      toast.success(`解析完成：${ok} 成功 / ${res.results.length - ok} 失败`, { id: toastId });
       qc.invalidateQueries({ queryKey: ["orders"] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "解析失敗", { id: toastId });
+      toast.error(e instanceof Error ? e.message : "解析失败", { id: toastId });
     } finally {
       setBusy(false);
     }
@@ -204,7 +204,7 @@ function OrdersPage() {
     const toastId = toast.loading("AI 分析地址中…");
     const res = await suggestAddress({ data: { rawAddress: order.raw_address } });
     if (!res.success) {
-      toast.error(res.error ?? "AI 分析失敗", { id: toastId });
+      toast.error(res.error ?? "AI 分析失败", { id: toastId });
       return;
     }
     toast.dismiss(toastId);
@@ -213,17 +213,17 @@ function OrdersPage() {
 
   return (
     <AppShell
-      title="約期提醒"
-      subtitle={`待約期 ${waiting.length} 張 · 逾期 ${overdueCount} · 緊急 ${urgentCount}（跟進單置頂，安裝單以收訂 +7 日死線排序）`}
+      title="约期提醒"
+      subtitle={`待约期 ${waiting.length} 张 · 逾期 ${overdueCount} · 紧急 ${urgentCount}（跟进单置顶，安装单以收订 +7 日死线排序）`}
       actions={
         <>
           <Button variant="outline" size="sm" onClick={geocodeAll} disabled={busy}>
             <RefreshCw className={cn("size-4", busy && "animate-spin")} />
-            一鍵解析地址
+            一键解析地址
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
-            新增訂單
+            新增订单
           </Button>
         </>
       }
@@ -233,7 +233,7 @@ function OrdersPage() {
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="搜尋姓名／電話／地址／訂單號"
+            placeholder="搜寻姓名／电话／地址／订单号"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
@@ -243,9 +243,9 @@ function OrdersPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部類型</SelectItem>
-            <SelectItem value="install">安裝單</SelectItem>
-            <SelectItem value="followup">跟進單</SelectItem>
+            <SelectItem value="all">全部类型</SelectItem>
+            <SelectItem value="install">安装单</SelectItem>
+            <SelectItem value="followup">跟进单</SelectItem>
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
@@ -253,9 +253,9 @@ function OrdersPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部狀態</SelectItem>
-            <SelectItem value="unscheduled">待約期</SelectItem>
-            <SelectItem value="scheduled">已約期</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="unscheduled">待约期</SelectItem>
+            <SelectItem value="scheduled">已约期</SelectItem>
             <SelectItem value="completed">已完成</SelectItem>
           </SelectContent>
         </Select>
@@ -263,16 +263,16 @@ function OrdersPage() {
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="hidden grid-cols-[1.2fr_2.2fr_1.3fr_0.9fr_1fr_auto] gap-4 border-b border-border px-4 py-2.5 text-[11px] tracking-wider text-muted-foreground lg:grid">
-          <span>客戶</span>
+          <span>客户</span>
           <span>地址</span>
-          <span>死線／提醒</span>
-          <span>狀態</span>
-          <span>安裝</span>
+          <span>死线／提醒</span>
+          <span>状态</span>
+          <span>安装</span>
           <span className="w-8" />
         </div>
-        {isLoading && <p className="p-6 text-sm text-muted-foreground">載入中…</p>}
+        {isLoading && <p className="p-6 text-sm text-muted-foreground">载入中…</p>}
         {!isLoading && filtered.length === 0 && (
-          <p className="p-6 text-sm text-muted-foreground">未有訂單，可以由匯入或者新增開始。</p>
+          <p className="p-6 text-sm text-muted-foreground">未有订单，可以由汇入或者新增开始。</p>
         )}
         {filtered.map((o) => {
           const open = expanded === o.id;
@@ -297,7 +297,7 @@ function OrdersPage() {
                           : "bg-primary/20 text-primary",
                       )}
                     >
-                      {o.order_type === "followup" ? "跟進" : "安裝"}
+                      {o.order_type === "followup" ? "跟进" : "安装"}
                     </span>
                     {o.customer_name}
                   </p>
@@ -332,30 +332,30 @@ function OrdersPage() {
               {open && (
                 <div className="grid gap-4 border-t border-border bg-surface/60 px-4 py-4 md:grid-cols-2">
                   <div className="space-y-3 text-sm">
-                    <Field label="訂單類型" value={ORDER_TYPE_LABEL[o.order_type] ?? o.order_type} />
-                    <Field label="收訂日期" value={o.deposit_date ?? "—"} />
-                    <Field label="約期死線" value={u.deadline ?? (o.order_type === "followup" ? "跟進單（即刻處理）" : "—")} />
-                    <Field label="定位狀態" value={GEO_LABEL[o.geo_status] ?? o.geo_status} />
+                    <Field label="订单类型" value={ORDER_TYPE_LABEL[o.order_type] ?? o.order_type} />
+                    <Field label="收订日期" value={o.deposit_date ?? "—"} />
+                    <Field label="约期死线" value={u.deadline ?? (o.order_type === "followup" ? "跟进单（即刻处理）" : "—")} />
+                    <Field label="定位状态" value={GEO_LABEL[o.geo_status] ?? o.geo_status} />
                     <Field label="完整地址" value={o.raw_address} />
-                    <Field label="標準化地址" value={o.normalized_address ?? "—"} />
+                    <Field label="标准化地址" value={o.normalized_address ?? "—"} />
                     <Field
-                      label="座標"
+                      label="座标"
                       value={
                         o.latitude && o.longitude
                           ? `${Number(o.latitude).toFixed(5)}, ${Number(o.longitude).toFixed(5)}`
                           : "未定位"
                       }
                     />
-                    <Field label="訂單內容" value={o.order_content ?? "—"} />
+                    <Field label="订单内容" value={o.order_content ?? "—"} />
                     <Field label="度尺日期" value={o.measure_date ?? "—"} />
-                    <Field label="備註" value={o.notes ?? "—"} />
-                    <Field label="負責隊伍" value={teamName(o.team_id)} />
+                    <Field label="备注" value={o.notes ?? "—"} />
+                    <Field label="负责队伍" value={teamName(o.team_id)} />
                   </div>
 
                   <div className="space-y-3">
                     <div className="space-y-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">安裝日期</Label>
+                        <Label className="text-xs text-muted-foreground">安装日期</Label>
                         <Input
                           type="date"
                           value={o.install_date ?? ""}
@@ -371,7 +371,7 @@ function OrdersPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">到達時段（起 — 迄）</Label>
+                        <Label className="text-xs text-muted-foreground">到达时段（起 — 迄）</Label>
                         <TimeRangeSelect
                           value={o.install_time}
                           onChange={(v) =>
@@ -396,7 +396,7 @@ function OrdersPage() {
                             })
                           }
                         >
-                          取消約期
+                          取消约期
                         </Button>
                       )}
                     </div>
@@ -404,7 +404,7 @@ function OrdersPage() {
 
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">負責隊伍</Label>
+                      <Label className="text-xs text-muted-foreground">负责队伍</Label>
                       <Select
                         value={o.team_id ?? "none"}
                         onValueChange={(v) =>
@@ -429,7 +429,7 @@ function OrdersPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">訂單狀態</Label>
+                      <Label className="text-xs text-muted-foreground">订单状态</Label>
                       <Select
                         value={o.status}
                         onValueChange={(v) => updateOrder.mutate({ id: o.id, patch: { status: v } })}
@@ -438,8 +438,8 @@ function OrdersPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="unscheduled">未約期</SelectItem>
-                          <SelectItem value="scheduled">已約期</SelectItem>
+                          <SelectItem value="unscheduled">未约期</SelectItem>
+                          <SelectItem value="scheduled">已约期</SelectItem>
                           <SelectItem value="completed">已完成</SelectItem>
                         </SelectContent>
                       </Select>
@@ -454,7 +454,7 @@ function OrdersPage() {
                             data: { items: [{ id: o.id, address: o.raw_address }] },
                           });
                           if (!res.configured) {
-                            toast.error("未設定高德 API Key");
+                            toast.error("未设定高德 API Key");
                             return;
                           }
                           const r = res.results[0] as
@@ -476,7 +476,7 @@ function OrdersPage() {
                               .from("orders")
                               .update({ geo_status: "failed" })
                               .eq("id", o.id);
-                            toast.error("解析失敗，請手動修正地址");
+                            toast.error("解析失败，请手动修正地址");
                           }
                           qc.invalidateQueries({ queryKey: ["orders"] });
                         }}
@@ -486,24 +486,24 @@ function OrdersPage() {
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => askAi(o)}>
                         <Sparkles className="size-4" />
-                        AI 補全地址
+                        AI 补全地址
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="text-destructive"
                         onClick={() => {
-                          if (confirm("確定刪除呢張訂單？")) deleteOrder.mutate(o.id);
+                          if (confirm("确定删除呢张订单？")) deleteOrder.mutate(o.id);
                         }}
                       >
                         <Trash2 className="size-4" />
-                        刪除
+                        删除
                       </Button>
                     </div>
 
                     {suggestions?.id === o.id && (
                       <div className="space-y-2 rounded border border-border bg-card p-3">
-                        <p className="text-xs text-muted-foreground">AI 建議地址（點擊套用）</p>
+                        <p className="text-xs text-muted-foreground">AI 建议地址（点击套用）</p>
                         {suggestions.list.map((s) => (
                           <button
                             key={s}
@@ -532,12 +532,12 @@ function OrdersPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增訂單</DialogTitle>
+            <DialogTitle>新增订单</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>訂單類型</Label>
+                <Label>订单类型</Label>
                 <Select
                   value={form.order_type}
                   onValueChange={(v) => setForm({ ...form, order_type: v })}
@@ -546,14 +546,14 @@ function OrdersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="install">安裝單</SelectItem>
-                    <SelectItem value="followup">跟進單</SelectItem>
+                    <SelectItem value="install">安装单</SelectItem>
+                    <SelectItem value="followup">跟进单</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {form.order_type === "install" && (
                 <div className="space-y-1.5">
-                  <Label>收訂日期（+7 日死線）</Label>
+                  <Label>收订日期（+7 日死线）</Label>
                   <Input
                     type="date"
                     value={form.deposit_date}
@@ -564,14 +564,14 @@ function OrdersPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>客戶姓名 *</Label>
+                <Label>客户姓名 *</Label>
                 <Input
                   value={form.customer_name}
                   onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>電話</Label>
+                <Label>电话</Label>
                 <Input
                   value={form.customer_phone}
                   onChange={(e) => setForm({ ...form, customer_phone: e.target.value })}
@@ -588,7 +588,7 @@ function OrdersPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>訂單內容</Label>
+                <Label>订单内容</Label>
                 <Input
                   value={form.order_content}
                   onChange={(e) => setForm({ ...form, order_content: e.target.value })}
@@ -604,7 +604,7 @@ function OrdersPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>備註</Label>
+              <Label>备注</Label>
               <Textarea
                 rows={2}
                 value={form.notes}
@@ -617,7 +617,7 @@ function OrdersPage() {
               取消
             </Button>
             <Button onClick={createOrder} disabled={busy}>
-              儲存
+              储存
             </Button>
           </DialogFooter>
         </DialogContent>
