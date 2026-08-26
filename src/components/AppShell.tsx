@@ -8,12 +8,14 @@ import {
   Camera,
   FileSpreadsheet,
   Users,
+  ShieldCheck,
   LogOut,
   Menu,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useMyAccount } from "@/lib/account";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -25,6 +27,7 @@ const NAV = [
   { to: "/import", label: "Excel 汇入", icon: FileSpreadsheet },
   { to: "/technicians", label: "师傅队伍", icon: Users },
 ] as const;
+
 
 export function AppShell({
   title,
@@ -59,6 +62,10 @@ export function AppShell({
     if (checked && !session) navigate({ to: "/auth" });
   }, [checked, session, navigate]);
 
+  const { data: account, isLoading: accountLoading } = useMyAccount(session?.user.id);
+  const isAdmin = account?.isAdmin ?? false;
+  const approved = isAdmin || account?.profile?.status === "approved";
+
   if (!checked || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -66,6 +73,45 @@ export function AppShell({
       </div>
     );
   }
+
+  if (accountLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">检查帐户权限…</p>
+      </div>
+    );
+  }
+
+  if (!approved) {
+    const rejected = account?.profile?.status === "rejected";
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-4 rounded-lg border border-border bg-card p-6 text-center">
+          <h1 className="font-display text-lg font-semibold">
+            {rejected ? "帐户申请已被拒绝" : "等待管理员批核"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {rejected
+              ? "如有疑问请联络主管理员。"
+              : "你的帐户已建立，需要主管理员批核后才可使用系统。"}
+          </p>
+          <p className="text-xs text-muted-foreground">{session.user.email}</p>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate({ to: "/auth" });
+            }}
+          >
+            登出
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -107,6 +153,22 @@ export function AppShell({
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={() => setNavOpen(false)}
+              className={cn(
+                "flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors",
+                pathname === "/admin"
+                  ? "bg-sidebar-accent font-medium text-sidebar-primary"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+              )}
+            >
+              <ShieldCheck className="size-4" />
+              帐户后台
+            </Link>
+          )}
+
         </nav>
         <div className="border-t border-sidebar-border p-3">
           <p className="truncate px-2 pb-2 text-xs text-muted-foreground">{session.user.email}</p>
