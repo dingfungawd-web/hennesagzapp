@@ -317,7 +317,10 @@ function OrdersPage() {
                     </span>
                     {o.customer_name}
                   </p>
-                  <p className="tabular truncate text-xs text-muted-foreground">
+                  <p
+                    className="tabular truncate text-xs text-muted-foreground select-text"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {o.customer_phone ?? "—"}
                   </p>
                 </div>
