@@ -9,7 +9,6 @@ import {
   RefreshCw,
   Search,
   Trash2,
-  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DeleteOrderDialog } from "@/components/DeleteOrderDialog";
@@ -46,7 +45,7 @@ import {
 } from "@/lib/domain";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { geocodeAddresses } from "@/lib/amap.functions";
-import { suggestAddress } from "@/lib/ai.functions";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -107,7 +106,7 @@ function OrdersPage() {
   const [delTarget, setDelTarget] = useState<Order | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
-  const [suggestions, setSuggestions] = useState<{ id: string; list: string[] } | null>(null);
+  
   const [geoFilter, setGeoFilter] = useState<string>("all");
 
   const { data: orders = [], isLoading } = useOrders(status === "all" ? undefined : { status });
@@ -207,16 +206,6 @@ function OrdersPage() {
     }
   };
 
-  const askAi = async (order: Order) => {
-    const toastId = toast.loading("AI 分析地址中…");
-    const res = await suggestAddress({ data: { rawAddress: order.raw_address } });
-    if (!res.success) {
-      toast.error(res.error ?? "AI 分析失败", { id: toastId });
-      return;
-    }
-    toast.dismiss(toastId);
-    setSuggestions({ id: order.id, list: res.suggestions.map((s) => s.address) });
-  };
 
   return (
     <AppShell
@@ -526,10 +515,6 @@ function OrdersPage() {
                         <MapPin className="size-4" />
                         解析地址
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => askAi(o)}>
-                        <Sparkles className="size-4" />
-                        AI 补全地址
-                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -539,28 +524,6 @@ function OrdersPage() {
                         <Trash2 className="size-4" />
                         删除
                       </Button>
-                    </div>
-
-                    {suggestions?.id === o.id && (
-                      <div className="space-y-2 rounded border border-border bg-card p-3">
-                        <p className="text-xs text-muted-foreground">AI 建议地址（点击套用）</p>
-                        {suggestions.list.map((s) => (
-                          <button
-                            key={s}
-                            className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-                            onClick={() => {
-                              updateOrder.mutate({
-                                id: o.id,
-                                patch: { raw_address: s, geo_status: "pending" },
-                              });
-                              setSuggestions(null);
-                            }}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
