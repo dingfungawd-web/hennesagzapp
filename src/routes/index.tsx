@@ -674,3 +674,63 @@ function Field({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function AddressEditor({ order, onDone }: { order: Order; onDone: () => void }) {
+  const [value, setValue] = useState(order.raw_address);
+  const [busy, setBusy] = useState(false);
+  const failed = order.geo_status === "failed";
+
+  const saveAndGeocode = async () => {
+    const address = value.trim();
+    if (!address) return;
+    setBusy(true);
+    const toastId = toast.loading("重新解析地址中…");
+    try {
+      if (address !== order.raw_address) {
+        await supabase.from("orders").update({ raw_address: address }).eq("id", order.id);
+      }
+      const res = await geocodeAddresses({ data: { items: [{ id: order.id, address }] } });
+      if (!res.configured) {
+        toast.error("未设定高德 API Key", { id: toastId });
+        return;
+      }
+      const r = res.results[0];
+      if (r?.ok) {
+        await supabase
+          .from("orders")
+          .update({
+            latitude: r.lat ?? null,
+            longitude: r.lon ?? null,
+            normalized_address: r.formatted ?? null,
+            geo_status: "confirmed",
+          })
+          .eq("id", order.id);
+        toast.success("已成功定位", { id: toastId });
+      } else {
+        await supabase.from("orders").update({ geo_status: "failed" }).eq("id", order.id);
+        toast.error("仍然解析唔到，请补充城市／区／小区／栋室", { id: toastId });
+      }
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "space-y-2 rounded-lg border p-3",
+        failed ? "border-destructive/40 bg-destructive/10" : "border-border bg-card",
+      )}
+    >
+      <Label className="text-xs text-muted-foreground">
+        {failed ? "地址解析失败 — 请修正后重新解析" : "修正地址并重新解析"}
+      </Label>
+      <Textarea rows={2} value={value} onChange={(e) => setValue(e.target.value)} />
+      <Button size="sm" className="w-full" onClick={saveAndGeocode} disabled={busy}>
+        <MapPin className="size-4" />
+        储存并重新解析
+      </Button>
+    </div>
+  );
+}
