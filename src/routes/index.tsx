@@ -662,6 +662,15 @@ function OrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteOrderDialog
+        open={!!delTarget}
+        onOpenChange={(v) => !v && setDelTarget(null)}
+        summary={delTarget ? `${delTarget.customer_name} · ${delTarget.raw_address}` : undefined}
+        onConfirm={() => {
+          if (delTarget) deleteOrder.mutate(delTarget.id);
+        }}
+      />
     </AppShell>
   );
 }
