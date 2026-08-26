@@ -254,9 +254,18 @@ function MapPage() {
     });
     if (markers.length) {
       mapRef.current.add(markers);
-      mapRef.current.setFitView(markers, false, [60, 60, 60, 60]);
+      const key = located.map((o) => o.id).join(",");
+      if (fitKeyRef.current !== key) {
+        fitKeyRef.current = key;
+        mapRef.current.setFitView(markers, false, [60, 60, 60, 60]);
+      }
     }
-  }, [ready, located.map((o) => `${o.id}:${o.status}`).join(",")]);
+  }, [
+    ready,
+    located.map((o) => `${o.id}:${o.status}`).join(","),
+    origin?.id,
+    dest?.id,
+  ]);
 
   const focus = (o: Order) => {
     if (mapRef.current && o.latitude && o.longitude) {
