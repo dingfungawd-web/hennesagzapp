@@ -311,7 +311,7 @@ function ImportPage() {
       toast.error("汇入失败：" + error.message);
       return;
     }
-    toast.success(`已汇入 ${rows.length} 张订单，正在自动解析地址…`);
+    toast.success(`已汇入 ${finalRows.length} 张订单，正在自动解析地址…`);
 
     setRows([]);
     setFileName("");
