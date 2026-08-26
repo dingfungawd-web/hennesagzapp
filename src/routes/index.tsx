@@ -106,8 +106,10 @@ function OrdersPage() {
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [suggestions, setSuggestions] = useState<{ id: string; list: string[] } | null>(null);
+  const [geoFilter, setGeoFilter] = useState<string>("all");
 
   const { data: orders = [], isLoading } = useOrders(status === "all" ? undefined : { status });
+  const { data: failedOrders = [] } = useOrders({ geoStatus: "failed" });
   const { data: teams = [] } = useTeams();
   const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
@@ -118,6 +120,7 @@ function OrdersPage() {
     const k = keyword.trim().toLowerCase();
     let list = orders;
     if (typeFilter !== "all") list = list.filter((o) => o.order_type === typeFilter);
+    if (geoFilter !== "all") list = list.filter((o) => o.geo_status === geoFilter);
     if (k)
       list = list.filter((o) =>
         [o.customer_name, o.customer_phone, o.raw_address, o.order_content, o.order_no]
@@ -125,11 +128,13 @@ function OrdersPage() {
           .some((v) => String(v).toLowerCase().includes(k)),
       );
     return [...list].sort((a, b) => urgencyRank(a) - urgencyRank(b));
-  }, [orders, keyword, typeFilter]);
+  }, [orders, keyword, typeFilter, geoFilter]);
 
   const waiting = orders.filter((o) => o.status === "unscheduled");
   const overdueCount = waiting.filter((o) => urgencyOf(o).level === "overdue").length;
   const urgentCount = waiting.filter((o) => urgencyOf(o).level === "urgent").length;
+  const failedCount = failedOrders.length;
+
 
   const createOrder = async () => {
     if (!form.customer_name || !form.raw_address) {
