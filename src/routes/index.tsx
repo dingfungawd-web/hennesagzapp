@@ -233,6 +233,27 @@ function OrdersPage() {
         </>
       }
     >
+      {failedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
+          <MapPin className="size-4 text-destructive" />
+          <p className="text-sm">
+            有 <span className="font-semibold text-destructive">{failedCount}</span> 条地址解析失败，需要人手修正。
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setStatus("all");
+              setGeoFilter("failed");
+              setTypeFilter("all");
+              setKeyword("");
+            }}
+          >
+            只看解析失败
+          </Button>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -243,6 +264,18 @@ function OrdersPage() {
             onChange={(e) => setKeyword(e.target.value)}
           />
         </div>
+        <Select value={geoFilter} onValueChange={setGeoFilter}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部定位</SelectItem>
+            <SelectItem value="failed">解析失败</SelectItem>
+            <SelectItem value="pending">待解析</SelectItem>
+            <SelectItem value="confirmed">已定位</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-36">
             <SelectValue />
