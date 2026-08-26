@@ -8,12 +8,14 @@ import {
   Camera,
   FileSpreadsheet,
   Users,
+  ShieldCheck,
   LogOut,
   Menu,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useMyAccount } from "@/lib/account";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -25,6 +27,7 @@ const NAV = [
   { to: "/import", label: "Excel 汇入", icon: FileSpreadsheet },
   { to: "/technicians", label: "师傅队伍", icon: Users },
 ] as const;
+
 
 export function AppShell({
   title,
