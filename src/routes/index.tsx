@@ -104,6 +104,7 @@ function OrdersPage() {
   const [keyword, setKeyword] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [delTarget, setDelTarget] = useState<Order | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [suggestions, setSuggestions] = useState<{ id: string; list: string[] } | null>(null);
