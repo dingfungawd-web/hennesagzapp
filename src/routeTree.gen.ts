@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ClusterRouteImport } from './routes/cluster'
+import { Route as EntryRouteImport } from './routes/entry'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as ScheduleRouteImport } from './routes/schedule'
@@ -37,6 +38,11 @@ const AuthRoute = AuthRouteImport.update({
 const ClusterRoute = ClusterRouteImport.update({
   id: '/cluster',
   path: '/cluster',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntryRoute = EntryRouteImport.update({
+  id: '/entry',
+  path: '/entry',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImportRoute = ImportRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cluster': typeof ClusterRoute
+  '/entry': typeof EntryRoute
   '/import': typeof ImportRoute
   '/map': typeof MapRoute
   '/schedule': typeof ScheduleRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cluster': typeof ClusterRoute
+  '/entry': typeof EntryRoute
   '/import': typeof ImportRoute
   '/map': typeof MapRoute
   '/schedule': typeof ScheduleRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cluster': typeof ClusterRoute
+  '/entry': typeof EntryRoute
   '/import': typeof ImportRoute
   '/map': typeof MapRoute
   '/schedule': typeof ScheduleRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/cluster'
+    | '/entry'
     | '/import'
     | '/map'
     | '/schedule'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/cluster'
+    | '/entry'
     | '/import'
     | '/map'
     | '/schedule'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/cluster'
+    | '/entry'
     | '/import'
     | '/map'
     | '/schedule'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ClusterRoute: typeof ClusterRoute
+  EntryRoute: typeof EntryRoute
   ImportRoute: typeof ImportRoute
   MapRoute: typeof MapRoute
   ScheduleRoute: typeof ScheduleRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/cluster'
       fullPath: '/cluster'
       preLoaderRoute: typeof ClusterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entry': {
+      id: '/entry'
+      path: '/entry'
+      fullPath: '/entry'
+      preLoaderRoute: typeof EntryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/import': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ClusterRoute: ClusterRoute,
+  EntryRoute: EntryRoute,
   ImportRoute: ImportRoute,
   MapRoute: MapRoute,
   ScheduleRoute: ScheduleRoute,
