@@ -80,7 +80,7 @@ function EntryPage() {
   return (
     <AppShell
       title="入 App 清单"
-      subtitle={`待入 app ${list.length} 张 · 只显示今天或之后嘅约期`}
+      subtitle={`待入 app ${list.length} 张 · 喺网站约期／改期／取消约期后会显示喺度`}
       actions={
         <div className="flex items-center gap-2">
           <Button
