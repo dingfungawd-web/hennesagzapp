@@ -136,8 +136,14 @@ function MapPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const jsKey = import.meta.env["VITE_AMAP_JS_KEY"] as string | undefined;
-      const securityCode = import.meta.env["VITE_AMAP_JS_SECURITY_CODE"] as string | undefined;
+      let jsKey = import.meta.env["VITE_AMAP_JS_KEY"] as string | undefined;
+      let securityCode = import.meta.env["VITE_AMAP_JS_SECURITY_CODE"] as string | undefined;
+      if (!jsKey) {
+        // Lovable 预览环境回退：从后端读取已储存的 Key
+        const cfg = await getAmapConfig();
+        jsKey = cfg.jsKey || undefined;
+        securityCode = securityCode ?? (cfg.securityCode || undefined);
+      }
       if (cancelled) return;
       setConfigured(Boolean(jsKey));
       if (!jsKey) return;
