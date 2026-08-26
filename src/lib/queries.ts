@@ -58,7 +58,13 @@ export function useUpdateOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Order> }) => {
-      const { error } = await supabase.from("orders").update(patch).eq("id", id);
+      // 任何触及「期」相关栏位嘅更新都视为需要同步去 app：标记待同步并重置已入 app
+      const isScheduleAction =
+        "install_date" in patch || "install_time" in patch || "team_id" in patch;
+      const update = isScheduleAction
+        ? { ...patch, app_sync_pending: true, in_app: false }
+        : patch;
+      const { error } = await supabase.from("orders").update(update).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["orders"] }),

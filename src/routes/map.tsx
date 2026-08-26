@@ -99,6 +99,8 @@ function MapPage() {
         install_time: dTime,
         team_id: dTeam === "none" ? null : dTeam,
         status: "scheduled",
+        app_sync_pending: true,
+        in_app: false,
       })
       .eq("id", draft.id);
     setSavingSchedule(false);
@@ -114,7 +116,14 @@ function MapPage() {
   const cancelSchedule = async (o: Order) => {
     const { error } = await supabase
       .from("orders")
-      .update({ install_date: null, install_time: null, team_id: null, status: "unscheduled" })
+      .update({
+        install_date: null,
+        install_time: null,
+        team_id: null,
+        status: "unscheduled",
+        app_sync_pending: true,
+        in_app: false,
+      })
       .eq("id", o.id);
     if (error) {
       toast.error("取消失败");

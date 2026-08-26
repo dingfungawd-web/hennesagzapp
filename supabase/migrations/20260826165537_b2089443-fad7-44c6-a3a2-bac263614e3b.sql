@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN app_sync_pending boolean NOT NULL DEFAULT false;
