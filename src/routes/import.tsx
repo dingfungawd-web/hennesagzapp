@@ -356,6 +356,27 @@ function ImportPage() {
         </>
       }
     >
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
+        <span className="text-sm font-medium">今次汇入嘅单类型</span>
+        <div className="flex gap-2">
+          {(["followup", "install"] as ImportType[]).map((t) => (
+            <Button
+              key={t}
+              size="sm"
+              variant={importType === t ? "default" : "outline"}
+              onClick={() => setImportType(t)}
+            >
+              {t === "followup" ? "跟进单" : "安装单"}
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {importType === "followup"
+            ? "以「跟进日期」作为排期日期排序汇入"
+            : "以「安装日期」作为排期日期；未约期安装单以「收订日期 + 7 日」计约期死线"}
+        </p>
+      </div>
+
       <label className="mb-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card p-10 text-center transition-colors hover:border-primary/50">
         <FileSpreadsheet className="size-8 text-muted-foreground" />
         <div>
