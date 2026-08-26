@@ -14,7 +14,7 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** 订单摘要，用于确认提示 */
-  summary?: string;
+  summary?: string | undefined;
   onConfirm: () => void;
 };
 
