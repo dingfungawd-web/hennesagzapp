@@ -45,6 +45,7 @@ import {
 } from "@/lib/domain";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { geocodeAddresses } from "@/lib/amap.functions";
+import { autoGeocodeOrders } from "@/lib/geocode";
 
 import { cn } from "@/lib/utils";
 
