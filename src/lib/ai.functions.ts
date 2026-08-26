@@ -3,14 +3,17 @@ import { z } from "zod";
 import { callGateway, parseJsonBlock, SCREENSHOT_PROMPT } from "./ai.server";
 
 export type ExtractedOrder = {
+  orderType: "install" | "followup";
   orderNo: string;
   customerName: string;
   customerPhone: string;
   rawAddress: string;
   orderContent: string;
   measureDate: string;
+  depositDate: string;
   notes: string;
 };
+
 
 export const analyzeScreenshot = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ imageDataUrl: z.string().min(20) }).parse(data))
