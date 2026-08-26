@@ -41,15 +41,25 @@ function AuthPage() {
         if (error) throw error;
         navigate({ to: "/" });
       } else {
-        const { error } = await supabase.auth.signUp({
+        const uname = username.trim().toLowerCase();
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast.success("注册成功，可以直接登入");
+        if (data.user) {
+          await supabase.from("profiles").insert({
+            id: data.user.id,
+            username: uname,
+            email,
+            status: "pending",
+          });
+        }
+        toast.success("注册成功，请等待管理员批核后才可使用");
         setMode("signin");
       }
+
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "登入失败");
     } finally {
