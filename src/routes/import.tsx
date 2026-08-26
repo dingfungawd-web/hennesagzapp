@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileSpreadsheet, Download, Save } from "lucide-react";
@@ -46,6 +46,8 @@ type Row = {
   /** 只用于预览／排序，唔会写入资料库 */
   followup_date: string | null;
   followup_time: string | null;
+  excel_install_date: string | null;
+  excel_install_time: string | null;
 };
 
 type ImportType = "install" | "followup";
@@ -159,8 +161,8 @@ function normalizeTime(v: unknown): string | null {
 
 /** 按今次汇入嘅单类型，决定用跟进日期定安装日期做排期日期 */
 function applyType(r: Row, type: ImportType): Row {
-  const date = type === "followup" ? r.followup_date : r.install_date;
-  const time = type === "followup" ? r.followup_time : r.install_time;
+  const date = type === "followup" ? r.followup_date : r.excel_install_date;
+  const time = type === "followup" ? r.followup_time : r.excel_install_time;
   return {
     ...r,
     order_type: type,
@@ -215,6 +217,8 @@ function ImportPage() {
         deposit_date: null,
         followup_date: null,
         followup_time: null,
+        excel_install_date: null,
+        excel_install_time: null,
       };
       let surname = "";
       let title = "";
@@ -235,8 +239,8 @@ function ImportPage() {
         if (field === "measure_date") row.measure_date = normalizeDate(value);
         else if (field === "deposit_date") row.deposit_date = normalizeDate(value);
         else if (field === "install_date") {
-          row.install_date = normalizeDate(value);
-          row.install_time = row.install_date ? normalizeTime(value) : null;
+          row.excel_install_date = normalizeDate(value);
+          row.excel_install_time = row.excel_install_date ? normalizeTime(value) : null;
         } else if (field === "followup_date") {
           row.followup_date = normalizeDate(value);
           row.followup_time = row.followup_date ? normalizeTime(value) : null;
@@ -288,7 +292,13 @@ function ImportPage() {
     let error: { message: string } | null = null;
     for (let i = 0; i < finalRows.length; i += 300) {
       const chunk = finalRows.slice(i, i + 300).map((r) => {
-        const { followup_date: _fd, followup_time: _ft, ...rest } = r;
+        const {
+          followup_date: _fd,
+          followup_time: _ft,
+          excel_install_date: _ed,
+          excel_install_time: _et,
+          ...rest
+        } = r;
         return { ...rest, import_batch_id: batch.id };
       });
       const res = await supabase.from("orders").insert(chunk).select("id, raw_address, status, install_date");
@@ -405,20 +415,26 @@ function ImportPage() {
                 <th className="px-3 py-2">电话</th>
                 <th className="px-3 py-2">地址</th>
                 <th className="px-3 py-2">内容</th>
-                <th className="px-3 py-2">度尺</th>
-                <th className="px-3 py-2">安装</th>
+                <th className="px-3 py-2">跟进日期</th>
+                <th className="px-3 py-2">安装日期</th>
               </tr>
             </thead>
             <tbody>
-              {rows.slice(0, 50).map((r, i) => (
+              {finalRows.slice(0, 50).map((r, i) => (
                 <tr key={i} className="border-b border-border last:border-0">
                   <td className="px-3 py-2">{r.customer_name}</td>
                   <td className="tabular px-3 py-2 text-muted-foreground">{r.customer_phone ?? "—"}</td>
                   <td className="max-w-80 truncate px-3 py-2 text-muted-foreground">{r.raw_address}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.order_content ?? "—"}</td>
-                  <td className="tabular px-3 py-2 text-muted-foreground">{r.measure_date ?? "—"}</td>
                   <td className="tabular px-3 py-2 text-muted-foreground">
-                    {r.install_date ? `${r.install_date}${r.install_time ? ` ${r.install_time}` : ""}` : "—"}
+                    {r.followup_date
+                      ? `${r.followup_date}${r.followup_time ? ` ${r.followup_time}` : ""}`
+                      : "—"}
+                  </td>
+                  <td className="tabular px-3 py-2 text-muted-foreground">
+                    {r.excel_install_date
+                      ? `${r.excel_install_date}${r.excel_install_time ? ` ${r.excel_install_time}` : ""}`
+                      : "—"}
                   </td>
                 </tr>
               ))}
