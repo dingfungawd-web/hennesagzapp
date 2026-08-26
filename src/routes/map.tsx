@@ -127,10 +127,24 @@ function MapPage() {
 
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const hiddenCount = Object.values(hidden).filter(Boolean).length;
+  const [search, setSearch] = useState("");
 
   const located = orders.filter(
     (o) => o.latitude && o.longitude && isUpcoming(o) && !hidden[o.id],
   );
+
+  const q = search.trim().toLowerCase();
+  const digits = q.replace(/\D/g, "");
+  const listed = q
+    ? located.filter((o) => {
+        const phone = (o.customer_phone ?? "").replace(/\D/g, "");
+        return (
+          (digits && phone.includes(digits)) ||
+          (o.customer_name ?? "").toLowerCase().includes(q) ||
+          (o.raw_address ?? "").toLowerCase().includes(q)
+        );
+      })
+    : located;
 
 
   useEffect(() => {
