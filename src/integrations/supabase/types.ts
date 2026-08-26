@@ -49,6 +49,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          app_sync_pending: boolean
           created_at: string
           customer_name: string
           customer_phone: string | null
@@ -74,6 +75,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          app_sync_pending?: boolean
           created_at?: string
           customer_name: string
           customer_phone?: string | null
@@ -99,6 +101,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          app_sync_pending?: boolean
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
