@@ -332,6 +332,28 @@ function MapPage() {
               </div>
             )}
           </div>
+          <div className="border-b border-border p-3">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索电话／客户／地址"
+                className="pl-8 pr-8"
+              />
+              {search && (
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearch("")}
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            {search && (
+              <p className="mt-1 text-xs text-muted-foreground">找到 {listed.length} 张订单</p>
+            )}
+          </div>
           <div className="max-h-[62vh] overflow-auto p-2">
             {located.map((o) => (
               <div
