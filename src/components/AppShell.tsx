@@ -153,6 +153,22 @@ export function AppShell({
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={() => setNavOpen(false)}
+              className={cn(
+                "flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors",
+                pathname === "/admin"
+                  ? "bg-sidebar-accent font-medium text-sidebar-primary"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+              )}
+            >
+              <ShieldCheck className="size-4" />
+              帐户后台
+            </Link>
+          )}
+
         </nav>
         <div className="border-t border-sidebar-border p-3">
           <p className="truncate px-2 pb-2 text-xs text-muted-foreground">{session.user.email}</p>
