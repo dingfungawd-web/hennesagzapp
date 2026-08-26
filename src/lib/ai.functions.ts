@@ -33,15 +33,18 @@ export const analyzeScreenshot = createServerFn({ method: "POST" })
       });
       const parsed = parseJsonBlock<Record<string, string | null>>(content);
       const order: ExtractedOrder = {
+        orderType: parsed["orderType"] === "followup" ? "followup" : "install",
         orderNo: parsed["orderNo"] ?? "",
         customerName: parsed["customerName"] ?? "",
         customerPhone: parsed["customerPhone"] ?? "",
         rawAddress: parsed["rawAddress"] ?? "",
         orderContent: parsed["orderContent"] ?? "",
         measureDate: parsed["measureDate"] ?? "",
+        depositDate: parsed["depositDate"] ?? "",
         notes: parsed["notes"] ?? "",
       };
       return { success: true, error: undefined as string | undefined, order };
+
     } catch (e) {
       return {
         success: false,
