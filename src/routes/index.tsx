@@ -106,8 +106,10 @@ function OrdersPage() {
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [suggestions, setSuggestions] = useState<{ id: string; list: string[] } | null>(null);
+  const [geoFilter, setGeoFilter] = useState<string>("all");
 
   const { data: orders = [], isLoading } = useOrders(status === "all" ? undefined : { status });
+  const { data: failedOrders = [] } = useOrders({ geoStatus: "failed" });
   const { data: teams = [] } = useTeams();
   const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
@@ -118,6 +120,7 @@ function OrdersPage() {
     const k = keyword.trim().toLowerCase();
     let list = orders;
     if (typeFilter !== "all") list = list.filter((o) => o.order_type === typeFilter);
+    if (geoFilter !== "all") list = list.filter((o) => o.geo_status === geoFilter);
     if (k)
       list = list.filter((o) =>
         [o.customer_name, o.customer_phone, o.raw_address, o.order_content, o.order_no]
@@ -125,11 +128,13 @@ function OrdersPage() {
           .some((v) => String(v).toLowerCase().includes(k)),
       );
     return [...list].sort((a, b) => urgencyRank(a) - urgencyRank(b));
-  }, [orders, keyword, typeFilter]);
+  }, [orders, keyword, typeFilter, geoFilter]);
 
   const waiting = orders.filter((o) => o.status === "unscheduled");
   const overdueCount = waiting.filter((o) => urgencyOf(o).level === "overdue").length;
   const urgentCount = waiting.filter((o) => urgencyOf(o).level === "urgent").length;
+  const failedCount = failedOrders.length;
+
 
   const createOrder = async () => {
     if (!form.customer_name || !form.raw_address) {
@@ -228,6 +233,27 @@ function OrdersPage() {
         </>
       }
     >
+      {failedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3">
+          <MapPin className="size-4 text-destructive" />
+          <p className="text-sm">
+            有 <span className="font-semibold text-destructive">{failedCount}</span> 条地址解析失败，需要人手修正。
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setStatus("all");
+              setGeoFilter("failed");
+              setTypeFilter("all");
+              setKeyword("");
+            }}
+          >
+            只看解析失败
+          </Button>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -238,6 +264,18 @@ function OrdersPage() {
             onChange={(e) => setKeyword(e.target.value)}
           />
         </div>
+        <Select value={geoFilter} onValueChange={setGeoFilter}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部定位</SelectItem>
+            <SelectItem value="failed">解析失败</SelectItem>
+            <SelectItem value="pending">待解析</SelectItem>
+            <SelectItem value="confirmed">已定位</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-36">
             <SelectValue />
@@ -353,7 +391,9 @@ function OrdersPage() {
                   </div>
 
                   <div className="space-y-3">
+                    <AddressEditor order={o} onDone={() => qc.invalidateQueries({ queryKey: ["orders"] })} />
                     <div className="space-y-3">
+
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">安装日期</Label>
                         <Input
@@ -631,6 +671,66 @@ function Field({ label, value }: { label: string; value: string }) {
     <div className="grid grid-cols-[80px_1fr] gap-3">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="break-all">{value}</span>
+    </div>
+  );
+}
+
+function AddressEditor({ order, onDone }: { order: Order; onDone: () => void }) {
+  const [value, setValue] = useState(order.raw_address);
+  const [busy, setBusy] = useState(false);
+  const failed = order.geo_status === "failed";
+
+  const saveAndGeocode = async () => {
+    const address = value.trim();
+    if (!address) return;
+    setBusy(true);
+    const toastId = toast.loading("重新解析地址中…");
+    try {
+      if (address !== order.raw_address) {
+        await supabase.from("orders").update({ raw_address: address }).eq("id", order.id);
+      }
+      const res = await geocodeAddresses({ data: { items: [{ id: order.id, address }] } });
+      if (!res.configured) {
+        toast.error("未设定高德 API Key", { id: toastId });
+        return;
+      }
+      const r = res.results[0];
+      if (r?.ok) {
+        await supabase
+          .from("orders")
+          .update({
+            latitude: r.lat ?? null,
+            longitude: r.lon ?? null,
+            normalized_address: r.formatted ?? null,
+            geo_status: "confirmed",
+          })
+          .eq("id", order.id);
+        toast.success("已成功定位", { id: toastId });
+      } else {
+        await supabase.from("orders").update({ geo_status: "failed" }).eq("id", order.id);
+        toast.error("仍然解析唔到，请补充城市／区／小区／栋室", { id: toastId });
+      }
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "space-y-2 rounded-lg border p-3",
+        failed ? "border-destructive/40 bg-destructive/10" : "border-border bg-card",
+      )}
+    >
+      <Label className="text-xs text-muted-foreground">
+        {failed ? "地址解析失败 — 请修正后重新解析" : "修正地址并重新解析"}
+      </Label>
+      <Textarea rows={2} value={value} onChange={(e) => setValue(e.target.value)} />
+      <Button size="sm" className="w-full" onClick={saveAndGeocode} disabled={busy}>
+        <MapPin className="size-4" />
+        储存并重新解析
+      </Button>
     </div>
   );
 }
