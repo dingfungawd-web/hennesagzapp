@@ -54,34 +54,3 @@ export const analyzeScreenshot = createServerFn({ method: "POST" })
     }
   });
 
-export const suggestAddress = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => z.object({ rawAddress: z.string().min(1) }).parse(data))
-  .handler(async ({ data }) => {
-    try {
-      const content = await callGateway({
-        messages: [
-          { role: "system", content: "你是广佛地区地址补全助手，只输出 JSON，所有文字必须用简体中文。" },
-          {
-            role: "user",
-            content: `用户输入咗一个可能唔完整嘅地址：「${data.rawAddress}」
-请补全成标准完整地址（省市区 + 街道/镇 + 小区/大厦 + 栋室），最多列 3 个可能。所有输出文字必须为简体中文。
-只输出 JSON：{"suggestions":[{"address":"...","confidence":"high|medium|low","reason":"..."}]}`,
-          },
-        ],
-      });
-      const parsed = parseJsonBlock<{
-        suggestions?: { address: string; confidence: string; reason: string }[];
-      }>(content);
-      return {
-        success: true,
-        error: undefined as string | undefined,
-        suggestions: parsed.suggestions ?? [],
-      };
-    } catch (e) {
-      return {
-        success: false,
-        error: e instanceof Error ? e.message : String(e),
-        suggestions: [] as { address: string; confidence: string; reason: string }[],
-      };
-    }
-  });
