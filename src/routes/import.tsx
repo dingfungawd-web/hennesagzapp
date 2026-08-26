@@ -349,9 +349,9 @@ function ImportPage() {
             <Download className="size-4" />
             下载范本
           </Button>
-          <Button size="sm" onClick={save} disabled={saving || rows.length === 0}>
+          <Button size="sm" onClick={save} disabled={saving || finalRows.length === 0}>
             <Save className="size-4" />
-            {progress || `汇入 ${rows.length || ""} 张`}
+            {progress || `汇入 ${finalRows.length || ""} 张`}
           </Button>
         </>
       }
