@@ -317,7 +317,10 @@ function OrdersPage() {
                     </span>
                     {o.customer_name}
                   </p>
-                  <p className="tabular truncate text-xs text-muted-foreground">
+                  <p
+                    className="tabular truncate text-xs text-muted-foreground select-text"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {o.customer_phone ?? "—"}
                   </p>
                 </div>
@@ -349,6 +352,29 @@ function OrdersPage() {
                 <div className="grid gap-4 border-t border-border bg-surface/60 px-4 py-4 md:grid-cols-2">
                   <div className="space-y-3 text-sm">
                     <Field label="订单类型" value={ORDER_TYPE_LABEL[o.order_type] ?? o.order_type} />
+                    <div className="grid grid-cols-[80px_1fr] gap-3">
+                      <span className="text-xs text-muted-foreground">电话</span>
+                      <div className="flex items-center gap-2">
+                        <span className="select-all break-all tabular">
+                          {o.customer_phone ?? "—"}
+                        </span>
+                        {o.customer_phone && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => {
+                              navigator.clipboard
+                                .writeText(o.customer_phone ?? "")
+                                .then(() => toast.success("已复制电话"))
+                                .catch(() => toast.error("复制失败"));
+                            }}
+                          >
+                            复制
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                     <Field label="收订日期" value={o.deposit_date ?? "—"} />
                     <Field label="约期死线" value={u.deadline ?? (o.order_type === "followup" ? "跟进单（即刻处理）" : "—")} />
                     <Field label="定位状态" value={GEO_LABEL[o.geo_status] ?? o.geo_status} />
