@@ -87,3 +87,70 @@ export function isUpcoming(o: { status: string; install_date: string | null }) {
   if (!o.install_date) return true;
   return o.install_date >= ymd(new Date());
 }
+
+export const ORDER_TYPE_LABEL: Record<string, string> = {
+  install: "安裝單",
+  followup: "跟進單",
+};
+
+export function addDays(dateStr: string, days: number) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return ymd(d);
+}
+
+/** 安裝單：收訂日期 + 7 日就係約期死線；跟進單冇死線（本身就係急單） */
+export function deadlineOf(o: {
+  order_type: string;
+  deposit_date: string | null;
+}): string | null {
+  if (o.order_type !== "install") return null;
+  if (!o.deposit_date) return null;
+  return addDays(o.deposit_date, 7);
+}
+
+export function daysUntil(dateStr: string) {
+  const today = new Date(`${ymd(new Date())}T00:00:00`).getTime();
+  const target = new Date(`${dateStr}T00:00:00`).getTime();
+  return Math.round((target - today) / 86400000);
+}
+
+export type UrgencyLevel = "overdue" | "urgent" | "soon" | "normal" | "none";
+
+export function urgencyOf(o: {
+  order_type: string;
+  deposit_date: string | null;
+  status: string;
+}): { level: UrgencyLevel; deadline: string | null; days: number | null } {
+  if (o.status !== "unscheduled") return { level: "none", deadline: deadlineOf(o), days: null };
+  if (o.order_type === "followup") return { level: "urgent", deadline: null, days: null };
+  const deadline = deadlineOf(o);
+  if (!deadline) return { level: "none", deadline: null, days: null };
+  const days = daysUntil(deadline);
+  if (days < 0) return { level: "overdue", deadline, days };
+  if (days <= 2) return { level: "urgent", deadline, days };
+  if (days <= 5) return { level: "soon", deadline, days };
+  return { level: "normal", deadline, days };
+}
+
+export const URGENCY_TONE: Record<UrgencyLevel, string> = {
+  overdue: "border-destructive/50 bg-destructive/15 text-destructive",
+  urgent: "border-warning/50 bg-warning/15 text-warning",
+  soon: "border-primary/40 bg-primary/10 text-primary",
+  normal: "border-border bg-muted text-muted-foreground",
+  none: "border-border bg-muted text-muted-foreground",
+};
+
+/** 排序權重：越細越急 */
+export function urgencyRank(o: {
+  order_type: string;
+  deposit_date: string | null;
+  status: string;
+}) {
+  const u = urgencyOf(o);
+  if (o.status !== "unscheduled") return 9000;
+  if (o.order_type === "followup") return -9999; // 跟進單永遠置頂
+  if (u.days === null) return 8000; // 冇收訂日期，排喺最後但喺已約期之前
+  return u.days;
+}
+
