@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
+import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Search, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,10 +127,24 @@ function MapPage() {
 
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const hiddenCount = Object.values(hidden).filter(Boolean).length;
+  const [search, setSearch] = useState("");
 
   const located = orders.filter(
     (o) => o.latitude && o.longitude && isUpcoming(o) && !hidden[o.id],
   );
+
+  const q = search.trim().toLowerCase();
+  const digits = q.replace(/\D/g, "");
+  const listed = q
+    ? located.filter((o) => {
+        const phone = (o.customer_phone ?? "").replace(/\D/g, "");
+        return (
+          (digits && phone.includes(digits)) ||
+          (o.customer_name ?? "").toLowerCase().includes(q) ||
+          (o.raw_address ?? "").toLowerCase().includes(q)
+        );
+      })
+    : located;
 
 
   useEffect(() => {
@@ -181,6 +195,7 @@ function MapPage() {
   const originRef = useRef<Order | null>(null);
   const destRef = useRef<Order | null>(null);
   const infoRef = useRef<any>(null);
+  const fitKeyRef = useRef<string>("");
   useEffect(() => {
     originRef.current = origin;
   }, [origin]);
@@ -199,14 +214,26 @@ function MapPage() {
         offset: new AMap.Pixel(0, -32),
       });
     }
-    const markers = located.map((o) => {
+    const shown = [...located];
+    for (const p of [origin, dest]) {
+      if (p && p.latitude && p.longitude && !shown.some((x) => x.id === p.id)) shown.push(p);
+    }
+    const markers = shown.map((o) => {
       const isScheduled = o.status !== "unscheduled";
+      const role = origin?.id === o.id ? "origin" : dest?.id === o.id ? "dest" : null;
+      const content =
+        role === "origin"
+          ? `<div style="width:30px;height:30px;border-radius:9999px;background:#22c55e;border:3px solid #0f172a;box-shadow:0 0 0 2px #22c55e;display:flex;align-items:center;justify-content:center;color:#052e16;font-size:13px;font-weight:800">起</div>`
+          : role === "dest"
+            ? `<div style="width:30px;height:30px;border-radius:9999px;background:#ef4444;border:3px solid #0f172a;box-shadow:0 0 0 2px #ef4444;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800">终</div>`
+            : isScheduled
+              ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">约</div>`
+              : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`;
       const marker = new AMap.Marker({
         position: [Number(o.longitude), Number(o.latitude)],
-        offset: new AMap.Pixel(-11, -11),
-        content: isScheduled
-          ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">约</div>`
-          : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`,
+        offset: new AMap.Pixel(role ? -15 : -11, role ? -15 : -11),
+        zIndex: role ? 200 : 100,
+        content,
       });
       marker.on("click", () => {
         if (!destRef.current) setDest(o);
@@ -228,9 +255,18 @@ function MapPage() {
     });
     if (markers.length) {
       mapRef.current.add(markers);
-      mapRef.current.setFitView(markers, false, [60, 60, 60, 60]);
+      const key = located.map((o) => o.id).join(",");
+      if (fitKeyRef.current !== key) {
+        fitKeyRef.current = key;
+        mapRef.current.setFitView(markers, false, [60, 60, 60, 60]);
+      }
     }
-  }, [ready, located.map((o) => `${o.id}:${o.status}`).join(",")]);
+  }, [
+    ready,
+    located.map((o) => `${o.id}:${o.status}`).join(","),
+    origin?.id,
+    dest?.id,
+  ]);
 
   const focus = (o: Order) => {
     if (mapRef.current && o.latitude && o.longitude) {
@@ -296,8 +332,30 @@ function MapPage() {
               </div>
             )}
           </div>
+          <div className="border-b border-border p-3">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索电话／客户／地址"
+                className="pl-8 pr-8"
+              />
+              {search && (
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearch("")}
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            {search && (
+              <p className="mt-1 text-xs text-muted-foreground">找到 {listed.length} 张订单</p>
+            )}
+          </div>
           <div className="max-h-[62vh] overflow-auto p-2">
-            {located.map((o) => (
+            {listed.map((o) => (
               <div
                 key={o.id}
                 className="rounded p-2 transition-colors hover:bg-accent/40"
@@ -330,7 +388,10 @@ function MapPage() {
                     size="sm"
                     variant={origin?.id === o.id ? "default" : "outline"}
                     className="h-7 flex-1 text-xs"
-                    onClick={() => setOrigin(o)}
+                    onClick={() => {
+                      setOrigin(o);
+                      focus(o);
+                    }}
                   >
                     <Navigation className="size-3" />
                     设起点
@@ -339,7 +400,10 @@ function MapPage() {
                     size="sm"
                     variant={dest?.id === o.id ? "default" : "outline"}
                     className="h-7 flex-1 text-xs"
-                    onClick={() => setDest(o)}
+                    onClick={() => {
+                      setDest(o);
+                      focus(o);
+                    }}
                   >
                     <Flag className="size-3" />
                     设终点
@@ -365,9 +429,9 @@ function MapPage() {
                 </div>
               </div>
             ))}
-            {located.length === 0 && (
+            {listed.length === 0 && (
               <p className="p-4 text-center text-xs text-muted-foreground">
-                未有已定位订单，先去订单列表做地址解析。
+                {search ? "找不到符合的订单。" : "未有已定位订单，先去约期提醒页做地址解析。"}
               </p>
             )}
           </div>

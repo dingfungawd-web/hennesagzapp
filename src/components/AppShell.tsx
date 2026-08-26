@@ -19,7 +19,7 @@ import { useMyAccount } from "@/lib/account";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "订单列表", icon: ClipboardList },
+  { to: "/", label: "约期提醒", icon: ClipboardList },
   { to: "/schedule", label: "排程日历", icon: CalendarRange },
   { to: "/map", label: "地图路线", icon: MapIcon },
   { to: "/cluster", label: "智能配对", icon: Sparkles },
