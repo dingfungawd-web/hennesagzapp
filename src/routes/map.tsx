@@ -136,8 +136,8 @@ function MapPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const jsKey = import.meta.env.VITE_AMAP_JS_KEY as string | undefined;
-      const securityCode = import.meta.env.VITE_AMAP_JS_SECURITY_CODE as string | undefined;
+      const jsKey = import.meta.env["VITE_AMAP_JS_KEY"] as string | undefined;
+      const securityCode = import.meta.env["VITE_AMAP_JS_SECURITY_CODE"] as string | undefined;
       if (cancelled) return;
       setConfigured(Boolean(jsKey));
       if (!jsKey) return;
