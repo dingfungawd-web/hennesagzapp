@@ -412,7 +412,7 @@ function SchedulePage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               variant="outline"
                               size="sm"
@@ -438,6 +438,15 @@ function SchedulePage() {
                               }
                             >
                               取消约期
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 flex-1 text-xs text-destructive"
+                              onClick={() => setDelTarget(o)}
+                            >
+                              <Trash2 className="size-3.5" />
+                              删除
                             </Button>
                           </div>
                         </div>
