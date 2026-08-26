@@ -2,11 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { geocodeOne, fetchDrivingRoute, type GeoResult } from "./amap.server";
 
-export const getAmapConfig = createServerFn({ method: "GET" }).handler(async () => {
-  const jsKey = process.env["AMAP_JS_KEY"] ?? "";
-  const securityCode = process.env["AMAP_JS_SECURITY_CODE"] ?? "";
-  return { jsKey, securityCode, configured: Boolean(jsKey) };
-});
+</antml :parameter>
+
 
 export const geocodeAddresses = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
