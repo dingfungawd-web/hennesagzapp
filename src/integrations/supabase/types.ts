@@ -56,6 +56,7 @@ export type Database = {
           geo_status: string
           id: string
           import_batch_id: string | null
+          in_app: boolean
           install_date: string | null
           install_time: string | null
           latitude: number | null
@@ -80,6 +81,7 @@ export type Database = {
           geo_status?: string
           id?: string
           import_batch_id?: string | null
+          in_app?: boolean
           install_date?: string | null
           install_time?: string | null
           latitude?: number | null
@@ -104,6 +106,7 @@ export type Database = {
           geo_status?: string
           id?: string
           import_batch_id?: string | null
+          in_app?: boolean
           install_date?: string | null
           install_time?: string | null
           latitude?: number | null
