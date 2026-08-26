@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,12 +32,12 @@ export const Route = createFileRoute("/schedule")({
       { title: "排程日历 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "周视图与日视图排程日历，直接调整安装日期、到达时段与负责队伍。",
+        content: "月视图日历一览排期，点入某日查看当日完整排期顺序、时段、地址与队伍。",
       },
       { property: "og:title", content: "排程日历 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "周视图与日视图排程日历，直接调整安装日期、到达时段与负责队伍。",
+        content: "月视图日历一览排期，点入某日查看当日完整排期顺序、时段、地址与队伍。",
       },
     ],
   }),
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/schedule")({
 
 function SchedulePage() {
   const [anchor, setAnchor] = useState(() => new Date());
-  const [view, setView] = useState<"week" | "day" | "month">("week");
+  const [view, setView] = useState<"day" | "month">("month");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftDate, setDraftDate] = useState<string>("");
   const [draftTime, setDraftTime] = useState<string | null>(null);
@@ -58,17 +58,9 @@ function SchedulePage() {
 
   const days = useMemo(() => {
     if (view === "day") return [new Date(anchor)];
-    if (view === "month") {
-      const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-      const start = startOfWeek(first);
-      return Array.from({ length: 42 }, (_, i) => {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        return d;
-      });
-    }
-    const start = startOfWeek(anchor);
-    return Array.from({ length: 7 }, (_, i) => {
+    const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const start = startOfWeek(first);
+    return Array.from({ length: 42 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return d;
@@ -93,12 +85,20 @@ function SchedulePage() {
   const shift = (n: number) => {
     const d = new Date(anchor);
     if (view === "month") d.setMonth(d.getMonth() + n);
-    else d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
+    else d.setDate(d.getDate() + n);
     setAnchor(d);
   };
 
   const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name;
-  const viewLabel = view === "week" ? "周视图" : view === "day" ? "日视图" : "月视图";
+
+  const openDraft = (o: (typeof orders)[number], fallbackDate: string) => {
+    setDraftId(o.id);
+    setDraftDate(o.install_date ?? fallbackDate);
+    setDraftTime(o.install_time ?? null);
+    setDraftTeam(o.team_id ?? null);
+  };
+
+  const dayList = byDay.get(ymd(anchor)) ?? [];
 
   return (
     <AppShell
@@ -106,10 +106,16 @@ function SchedulePage() {
       subtitle={
         view === "month"
           ? `${anchor.getFullYear()} 年 ${anchor.getMonth() + 1} 月 · ${unscheduled.length} 张未排程`
-          : `${viewLabel} · ${unscheduled.length} 张未排程`
+          : `${anchor.getMonth() + 1} 月 ${anchor.getDate()} 日 · ${dayList.length} 张订单`
       }
       actions={
         <>
+          {view === "day" && (
+            <Button variant="outline" size="sm" onClick={() => setView("month")}>
+              <ArrowLeft className="size-4" />
+              返回月视图
+            </Button>
+          )}
           <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="上一页">
             <ChevronLeft className="size-4" />
           </Button>
@@ -120,268 +126,209 @@ function SchedulePage() {
           <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="下一页">
             <ChevronRight className="size-4" />
           </Button>
-          <Select value={view} onValueChange={(v) => setView(v as "week" | "day" | "month")}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="month">月视图</SelectItem>
-              <SelectItem value="week">周视图</SelectItem>
-              <SelectItem value="day">日视图</SelectItem>
-            </SelectContent>
-          </Select>
         </>
       }
     >
-      <div
-        className={cn(
-          "grid gap-4",
-          view !== "day" && "lg:grid-cols-[1fr_280px]",
-        )}
-      >
-        <div className="space-y-2">
-        {view === "day" && (
-          <div className="mb-4 border-b border-border pb-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">当日排期</p>
-                <h2 className="mt-1 text-xl font-semibold">
-                  {anchor.getFullYear()} 年 {anchor.getMonth() + 1} 月 {anchor.getDate()} 日 · 周
-                  {WEEKDAYS[(anchor.getDay() + 6) % 7]}
-                </h2>
-              </div>
-              <div className="text-right">
-                <p className="text-lg font-semibold">{(byDay.get(ymd(anchor)) ?? []).length} 张订单</p>
-                <p className="text-xs text-muted-foreground">按到达时段排列</p>
-              </div>
+      {view === "month" ? (
+        <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+          <div className="space-y-2">
+            <div className="hidden grid-cols-7 gap-2 text-center text-xs text-muted-foreground md:grid">
+              {WEEKDAYS.map((w) => (
+                <span key={w}>周{w}</span>
+              ))}
             </div>
-          </div>
-        )}
-        {view === "month" && (
-          <div className="hidden grid-cols-7 gap-2 text-center text-xs text-muted-foreground md:grid">
-            {WEEKDAYS.map((w) => (
-              <span key={w}>周{w}</span>
-            ))}
-          </div>
-        )}
-        <div
-          className={cn(
-            "grid gap-3",
-            view === "week"
-              ? "grid-cols-1 md:grid-cols-4 xl:grid-cols-7"
-              : view === "month"
-                ? "grid-cols-1 md:grid-cols-7 md:gap-2"
-                : "grid-cols-1",
-          )}
-        >
-          {days.map((d) => {
-            const key = ymd(d);
-            const list = byDay.get(key) ?? [];
-            const isToday = key === ymd(new Date());
-            const outside = view === "month" && d.getMonth() !== anchor.getMonth();
-            return (
-              <div
-                key={key}
-                className={cn(
-                  "rounded-lg border bg-card",
-                  view === "month" ? "min-h-24 p-2" : "min-h-40 p-3",
-                  isToday ? "border-primary/60" : "border-border",
-                  outside && "opacity-45",
-                )}
-              >
-                <div className="mb-2 flex items-baseline justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAnchor(new Date(d));
-                      setView("day");
-                    }}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-7 md:gap-2">
+              {days.map((d) => {
+                const key = ymd(d);
+                const list = byDay.get(key) ?? [];
+                const isToday = key === ymd(new Date());
+                const outside = d.getMonth() !== anchor.getMonth();
+                return (
+                  <div
+                    key={key}
                     className={cn(
-                      "text-sm font-medium hover:underline",
-                      isToday && "text-primary",
+                      "min-h-24 rounded-lg border bg-card p-2",
+                      isToday ? "border-primary/60" : "border-border",
+                      outside && "opacity-45",
                     )}
                   >
-                    {d.getMonth() + 1}/{d.getDate()}
-                    {view !== "month" && (
-                      <span className="ml-1.5 text-xs text-muted-foreground">
-                        周{WEEKDAYS[(d.getDay() + 6) % 7]}
-                      </span>
-                    )}
-                  </button>
-                  <span className="tabular text-xs text-muted-foreground">{list.length || ""}</span>
-                </div>
-                {view === "month" ? (
-                  <div className="space-y-1">
-                    {list.slice(0, 4).map((o) => (
+                    <div className="mb-2 flex items-baseline justify-between">
                       <button
-                        key={o.id}
                         type="button"
-                        onClick={() => {
-                          setDraftId(o.id);
-                          setDraftDate(o.install_date ?? key);
-                          setDraftTime(o.install_time ?? null);
-                          setDraftTeam(o.team_id ?? null);
-                        }}
-                        className="block w-full truncate rounded bg-surface px-1.5 py-1 text-left text-[11px]"
-                        title={o.raw_address}
-                      >
-                        {o.install_time ? (
-                          <span className="tabular mr-1 text-primary">
-                            {o.install_time.split("-")[0]}
-                          </span>
-                        ) : null}
-                        {o.raw_address}
-                      </button>
-                    ))}
-                    {list.length > 4 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-full justify-start px-1 text-[11px] text-muted-foreground"
                         onClick={() => {
                           setAnchor(new Date(d));
                           setView("day");
                         }}
-                      >
-                        +{list.length - 4} 张
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                <div className="space-y-2">
-                  {list.map((o, idx) => (
-                    <div
-                      key={o.id}
-                      className={cn(
-                        "rounded border border-border bg-surface p-2",
-                        view === "day" && "grid gap-4 p-4 md:grid-cols-[56px_120px_minmax(0,1fr)_auto] md:items-start",
-                      )}
-                    >
-                      {view === "day" && (
-                        <div className="flex size-12 items-center justify-center rounded bg-primary/15 text-xl font-semibold text-primary">
-                          {idx + 1}
-                        </div>
-                      )}
-                      {view === "day" && (
-                        <div>
-                          <p className="text-xs text-muted-foreground">到达时段</p>
-                          <p className="tabular mt-1 text-base font-semibold">
-                            {o.install_time ? formatTimeRange(o.install_time) : "未定时段"}
-                          </p>
-                        </div>
-                      )}
-                      <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-start gap-2">
-                          {view !== "day" && (
-                            <span className="tabular mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 text-[11px] font-medium text-primary">
-                              {idx + 1}
-                            </span>
-                          )}
-                          <div className="min-w-0">
-                            <p
-                              className={cn(
-                                "text-sm leading-snug font-medium",
-                                view === "day" ? "break-words" : "line-clamp-3",
-                              )}
-                            >
-                              {o.raw_address}
-                            </p>
-                            <p className="tabular mt-1 text-xs text-muted-foreground">
-                              {view !== "day" && (o.install_time ? `${formatTimeRange(o.install_time)} · ` : "未定时段 · ")}
-                              {o.customer_name}
-                              {o.customer_phone ? ` · ${o.customer_phone}` : ""}
-                            </p>
-                          </div>
-                        </div>
-                        {o.team_id && (
-                          <Badge variant="outline" className="shrink-0 text-[10px]">
-                            {teamName(o.team_id)}
-                          </Badge>
+                        className={cn(
+                          "text-sm font-medium hover:underline",
+                          isToday && "text-primary",
                         )}
-                      </div>
-                      {view === "day" && o.order_content && (
-                        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{o.order_content}</p>
-                      )}
-                      </div>
-                      <div className={cn(view === "day" && "w-full md:w-52")}>
-                      <TimeRangeSelect
-                        className={cn(view !== "day" && "mt-2")}
-                        compact
-                        value={o.install_time}
-                        onChange={(v) =>
-                          updateOrder.mutate({ id: o.id, patch: { install_time: v } })
-                        }
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-1 h-7 w-full text-xs text-muted-foreground"
-                        onClick={() =>
-                          updateOrder.mutate({
-                            id: o.id,
-                            patch: {
-                              install_date: null,
-                              install_time: null,
-                              team_id: null,
-                              status: "unscheduled",
-                            },
-                          })
-                        }
                       >
-                        取消约期
-                      </Button>
-                      </div>
-
+                        {d.getMonth() + 1}/{d.getDate()}
+                      </button>
+                      <span className="tabular text-xs text-muted-foreground">
+                        {list.length || ""}
+                      </span>
                     </div>
-                  ))}
-                  {list.length === 0 && (
-                    <p className="py-4 text-center text-xs text-muted-foreground">未有安排</p>
-                  )}
-                </div>
-                )}
-
-              </div>
-            );
-          })}
-        </div>
-        </div>
-
-
-        {view !== "day" && <aside className="rounded-lg border border-border bg-card p-3">
-          <p className="mb-2 text-sm font-medium">未排程订单（{unscheduled.length}）</p>
-          <div className="max-h-[70vh] space-y-2 overflow-auto">
-            {unscheduled.map((o) => (
-              <div key={o.id} className="rounded border border-border bg-surface p-2">
-                <p className="truncate text-sm font-medium">{o.customer_name}</p>
-                <p className="line-clamp-2 text-xs text-muted-foreground">{o.raw_address}</p>
-                <div className="mt-2 flex gap-1.5">
-                  {days.slice(0, 3).map((d) => (
-                    <Button
-                      key={ymd(d)}
-                      size="sm"
-                      variant="outline"
-                      className="h-7 flex-1 text-xs"
-                      onClick={() => {
-                        setDraftId(o.id);
-                        setDraftDate(ymd(d));
-                        setDraftTime(null);
-                        setDraftTeam(o.team_id ?? null);
-                      }}
-                    >
-                      {d.getMonth() + 1}/{d.getDate()}
-                    </Button>
-                  ))}
-                </div>
-
-              </div>
-            ))}
-            {unscheduled.length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">全部订单已排程 🎉</p>
-            )}
+                    <div className="space-y-1">
+                      {list.slice(0, 4).map((o) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => {
+                            setAnchor(new Date(d));
+                            setView("day");
+                          }}
+                          className="block w-full truncate rounded bg-surface px-1.5 py-1 text-left text-[11px]"
+                          title={o.raw_address}
+                        >
+                          {o.install_time ? (
+                            <span className="tabular mr-1 text-primary">
+                              {o.install_time.split("-")[0]}
+                            </span>
+                          ) : null}
+                          {o.raw_address}
+                        </button>
+                      ))}
+                      {list.length > 4 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-full justify-start px-1 text-[11px] text-muted-foreground"
+                          onClick={() => {
+                            setAnchor(new Date(d));
+                            setView("day");
+                          }}
+                        >
+                          +{list.length - 4} 张
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </aside>}
-      </div>
+
+          <aside className="rounded-lg border border-border bg-card p-3">
+            <p className="mb-2 text-sm font-medium">未排程订单（{unscheduled.length}）</p>
+            <div className="max-h-[70vh] space-y-2 overflow-auto">
+              {unscheduled.map((o) => (
+                <div key={o.id} className="rounded border border-border bg-surface p-2">
+                  <p className="truncate text-sm font-medium">{o.customer_name}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{o.raw_address}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-7 w-full text-xs"
+                    onClick={() => openDraft(o, ymd(anchor))}
+                  >
+                    安排约期
+                  </Button>
+                </div>
+              ))}
+              {unscheduled.length === 0 && (
+                <p className="py-6 text-center text-xs text-muted-foreground">全部订单已排程 🎉</p>
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">当日排期</p>
+              <h2 className="mt-1 text-xl font-semibold">
+                {anchor.getFullYear()} 年 {anchor.getMonth() + 1} 月 {anchor.getDate()} 日 · 周
+                {WEEKDAYS[(anchor.getDay() + 6) % 7]}
+              </h2>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-semibold">{dayList.length} 张订单</p>
+              <p className="text-xs text-muted-foreground">按到达时段排列</p>
+            </div>
+          </div>
+
+          {dayList.map((o, idx) => (
+            <div
+              key={o.id}
+              className="grid gap-4 rounded-lg border border-border bg-card p-4 md:grid-cols-[56px_130px_minmax(0,1fr)_220px] md:items-start"
+            >
+              <div className="flex size-12 items-center justify-center rounded bg-primary/15 text-xl font-semibold text-primary">
+                {idx + 1}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">到达时段</p>
+                <p className="tabular mt-1 text-base font-semibold">
+                  {o.install_time ? formatTimeRange(o.install_time) : "未定时段"}
+                </p>
+                {o.team_id && (
+                  <Badge variant="outline" className="mt-2 text-[10px]">
+                    {teamName(o.team_id)}
+                  </Badge>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm leading-snug font-medium break-words">{o.raw_address}</p>
+                <p className="tabular mt-1 text-xs text-muted-foreground">
+                  {o.customer_name}
+                  {o.customer_phone ? (
+                    <>
+                      {" · "}
+                      <a href={`tel:${o.customer_phone}`} className="text-primary hover:underline">
+                        {o.customer_phone}
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+                {o.order_content && (
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {o.order_content}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <TimeRangeSelect
+                  compact
+                  value={o.install_time}
+                  onChange={(v) => updateOrder.mutate({ id: o.id, patch: { install_time: v } })}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => openDraft(o, ymd(anchor))}
+                  >
+                    改期
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 flex-1 text-xs text-muted-foreground"
+                    onClick={() =>
+                      updateOrder.mutate({
+                        id: o.id,
+                        patch: {
+                          install_date: null,
+                          install_time: null,
+                          team_id: null,
+                          status: "unscheduled",
+                        },
+                      })
+                    }
+                  >
+                    取消约期
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {dayList.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">当日未有安排</p>
+          )}
+        </div>
+      )}
 
       <Dialog open={!!draftId} onOpenChange={(v) => !v && setDraftId(null)}>
         <DialogContent>
@@ -447,6 +394,5 @@ function SchedulePage() {
         </DialogContent>
       </Dialog>
     </AppShell>
-
   );
 }
