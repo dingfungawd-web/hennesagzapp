@@ -43,7 +43,12 @@ type Row = {
   status: string;
   order_type: string;
   deposit_date: string | null;
+  /** 只用于预览／排序，唔会写入资料库 */
+  followup_date: string | null;
+  followup_time: string | null;
 };
+
+type ImportType = "install" | "followup";
 
 const HEADER_MAP: Record<string, keyof Row> = {
   订单号: "order_no",
