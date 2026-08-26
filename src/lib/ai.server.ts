@@ -21,7 +21,7 @@ export const SCREENSHOT_PROMPT = `你是一个专门从纱窗公司订单 App �
 
 export async function callGateway(body: Record<string, unknown>) {
   const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI 服务未设定");
+  if (!apiKey) throw new Error("AI 服务未设定：部署环境缺少 LOVABLE_API_KEY 环境变量");
   const resp = await fetch(GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
