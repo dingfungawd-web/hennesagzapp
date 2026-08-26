@@ -136,15 +136,18 @@ function MapPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const cfg = await getAmapConfig();
+      const jsKey = import.meta.env.VITE_AMAP_JS_KEY as string | undefined;
+      const securityCode = import.meta.env.VITE_AMAP_JS_SECURITY_CODE as string | undefined;
       if (cancelled) return;
-      setConfigured(cfg.configured);
-      if (!cfg.configured) return;
-      if (cfg.securityCode) window._AMapSecurityConfig = { securityJsCode: cfg.securityCode };
+      setConfigured(Boolean(jsKey));
+      if (!jsKey) return;
+      if (securityCode) {
+        window._AMapSecurityConfig = { securityJsCode: securityCode };
+      }
       if (!window.AMap) {
         await new Promise<void>((resolve, reject) => {
           const s = document.createElement("script");
-          s.src = `https://webapi.amap.com/maps?v=2.0&key=${cfg.jsKey}`;
+          s.src = `https://webapi.amap.com/maps?v=2.0&key=${jsKey}`;
           s.async = true;
           s.onload = () => resolve();
           s.onerror = () => reject(new Error("地图载入失败"));
@@ -272,7 +275,7 @@ function MapPage() {
     >
       {configured === false && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
-          未设定高德地图 JS Key，地图无法显示。请提供 AMAP_JS_KEY 后再试。
+          未设定高德地图 JS Key，地图无法显示。请提供 VITE_AMAP_JS_KEY 后再试。
         </div>
       )}
 
