@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, ArrowLeft, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { DeleteOrderDialog } from "@/components/DeleteOrderDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
+import { useOrders, useTeams, useUpdateOrder, useDeleteOrder } from "@/lib/queries";
 
 import {
   WEEKDAYS,
@@ -82,6 +83,8 @@ function SchedulePage() {
 
   const { data: teams = [] } = useTeams();
   const updateOrder = useUpdateOrder();
+  const deleteOrder = useDeleteOrder();
+  const [delTarget, setDelTarget] = useState<Order | null>(null);
 
   const days = useMemo(() => {
     if (view === "day") return [new Date(anchor)];
@@ -409,7 +412,7 @@ function SchedulePage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               variant="outline"
                               size="sm"
@@ -435,6 +438,15 @@ function SchedulePage() {
                               }
                             >
                               取消约期
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 flex-1 text-xs text-destructive"
+                              onClick={() => setDelTarget(o)}
+                            >
+                              <Trash2 className="size-3.5" />
+                              删除
                             </Button>
                           </div>
                         </div>
@@ -514,6 +526,15 @@ function SchedulePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteOrderDialog
+        open={!!delTarget}
+        onOpenChange={(v) => !v && setDelTarget(null)}
+        summary={delTarget ? `${delTarget.customer_name} · ${delTarget.raw_address}` : undefined}
+        onConfirm={() => {
+          if (delTarget) deleteOrder.mutate(delTarget.id);
+        }}
+      />
     </AppShell>
   );
 }

@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { DeleteOrderDialog } from "@/components/DeleteOrderDialog";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,6 +104,7 @@ function OrdersPage() {
   const [keyword, setKeyword] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [delTarget, setDelTarget] = useState<Order | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [suggestions, setSuggestions] = useState<{ id: string; list: string[] } | null>(null);
@@ -532,9 +534,7 @@ function OrdersPage() {
                         size="sm"
                         variant="ghost"
                         className="text-destructive"
-                        onClick={() => {
-                          if (confirm("确定删除呢张订单？")) deleteOrder.mutate(o.id);
-                        }}
+                        onClick={() => setDelTarget(o)}
                       >
                         <Trash2 className="size-4" />
                         删除
@@ -662,6 +662,15 @@ function OrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteOrderDialog
+        open={!!delTarget}
+        onOpenChange={(v) => !v && setDelTarget(null)}
+        summary={delTarget ? `${delTarget.customer_name} · ${delTarget.raw_address}` : undefined}
+        onConfirm={() => {
+          if (delTarget) deleteOrder.mutate(delTarget.id);
+        }}
+      />
     </AppShell>
   );
 }
