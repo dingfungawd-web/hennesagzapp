@@ -96,12 +96,6 @@ function reminderText(
   return `仲有 ${u.days} 日（${u.deadline}）`;
 }
 
-function geoTone(geo: string) {
-  if (geo === "confirmed") return "bg-success/15 text-success border-success/30";
-  if (geo === "failed") return "bg-destructive/15 text-destructive border-destructive/30";
-  return "bg-warning/15 text-warning border-warning/30";
-}
-
 function OrdersPage() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>("unscheduled");
