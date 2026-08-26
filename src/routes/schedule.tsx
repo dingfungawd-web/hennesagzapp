@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useOrders, useTeams, useUpdateOrder } from "@/lib/queries";
 
-import { WEEKDAYS, startOfWeek, ymd } from "@/lib/domain";
+import { WEEKDAYS, startOfWeek, ymd, formatTimeRange } from "@/lib/domain";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { cn } from "@/lib/utils";
 
