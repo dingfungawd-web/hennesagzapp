@@ -33,7 +33,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrders, useTeams, useDeleteOrder, useUpdateOrder } from "@/lib/queries";
-import { GEO_LABEL, STATUS_LABEL, formatTimeRange, type Order } from "@/lib/domain";
+import {
+  GEO_LABEL,
+  STATUS_LABEL,
+  ORDER_TYPE_LABEL,
+  URGENCY_TONE,
+  formatTimeRange,
+  urgencyOf,
+  urgencyRank,
+  type Order,
+} from "@/lib/domain";
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { geocodeAddresses } from "@/lib/amap.functions";
 import { suggestAddress } from "@/lib/ai.functions";
@@ -42,15 +51,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "訂單列表 — 漢紗排程調度台" },
+      { title: "約期提醒 — 漢紗排程調度台" },
       {
         name: "description",
-        content: "集中管理紗窗安裝訂單：地址解析、約期狀態、隊伍分配與訂單內容一覽。",
+        content: "以死線排序嘅約期提醒列表：跟進單置頂、安裝單收訂 +7 日死線，逾期同緊急自動標色。",
       },
-      { property: "og:title", content: "訂單列表 — 漢紗排程調度台" },
+      { property: "og:title", content: "約期提醒 — 漢紗排程調度台" },
       {
         property: "og:description",
-        content: "集中管理紗窗安裝訂單：地址解析、約期狀態、隊伍分配與訂單內容一覽。",
+        content: "以死線排序嘅約期提醒列表：跟進單置頂、安裝單收訂 +7 日死線，逾期同緊急自動標色。",
       },
     ],
   }),
@@ -58,6 +67,8 @@ export const Route = createFileRoute("/")({
 });
 
 const emptyForm = {
+  order_type: "install",
+  deposit_date: "",
   customer_name: "",
   customer_phone: "",
   raw_address: "",
@@ -72,15 +83,23 @@ function statusTone(status: string) {
   return "bg-muted text-muted-foreground border-border";
 }
 
-function geoTone(geo: string) {
-  if (geo === "confirmed") return "bg-success/15 text-success border-success/30";
-  if (geo === "failed") return "bg-destructive/15 text-destructive border-destructive/30";
-  return "bg-warning/15 text-warning border-warning/30";
+function reminderText(
+  o: { order_type: string; status: string; deposit_date: string | null },
+  u: ReturnType<typeof urgencyOf>,
+) {
+  if (o.status !== "unscheduled") return "已處理";
+  if (o.order_type === "followup") return "跟進急單";
+  if (!u.deadline) return "未有收訂日期";
+  if (u.days === null) return u.deadline;
+  if (u.days < 0) return `逾期 ${Math.abs(u.days)} 日（${u.deadline}）`;
+  if (u.days === 0) return `今日到期（${u.deadline}）`;
+  return `仲有 ${u.days} 日（${u.deadline}）`;
 }
 
 function OrdersPage() {
   const qc = useQueryClient();
-  const [status, setStatus] = useState<string>("all");
+  const [status, setStatus] = useState<string>("unscheduled");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [keyword, setKeyword] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -97,15 +116,20 @@ function OrdersPage() {
 
   const filtered = useMemo(() => {
     const k = keyword.trim().toLowerCase();
-    if (!k) return orders;
-    return orders.filter((o) =>
-      [o.customer_name, o.customer_phone, o.raw_address, o.order_content, o.order_no]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(k)),
-    );
-  }, [orders, keyword]);
+    let list = orders;
+    if (typeFilter !== "all") list = list.filter((o) => o.order_type === typeFilter);
+    if (k)
+      list = list.filter((o) =>
+        [o.customer_name, o.customer_phone, o.raw_address, o.order_content, o.order_no]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(k)),
+      );
+    return [...list].sort((a, b) => urgencyRank(a) - urgencyRank(b));
+  }, [orders, keyword, typeFilter]);
 
-  const pendingCount = orders.filter((o) => o.geo_status !== "confirmed").length;
+  const waiting = orders.filter((o) => o.status === "unscheduled");
+  const overdueCount = waiting.filter((o) => urgencyOf(o).level === "overdue").length;
+  const urgentCount = waiting.filter((o) => urgencyOf(o).level === "urgent").length;
 
   const createOrder = async () => {
     if (!form.customer_name || !form.raw_address) {
@@ -114,6 +138,8 @@ function OrdersPage() {
     }
     setBusy(true);
     const { error } = await supabase.from("orders").insert({
+      order_type: form.order_type,
+      deposit_date: form.deposit_date || null,
       customer_name: form.customer_name,
       customer_phone: form.customer_phone || null,
       raw_address: form.raw_address,
@@ -187,8 +213,8 @@ function OrdersPage() {
 
   return (
     <AppShell
-      title="訂單列表"
-      subtitle={`共 ${orders.length} 張訂單 · ${pendingCount} 個地址待解析`}
+      title="約期提醒"
+      subtitle={`待約期 ${waiting.length} 張 · 逾期 ${overdueCount} · 緊急 ${urgentCount}（跟進單置頂，安裝單以收訂 +7 日死線排序）`}
       actions={
         <>
           <Button variant="outline" size="sm" onClick={geocodeAll} disabled={busy}>
@@ -212,13 +238,23 @@ function OrdersPage() {
             onChange={(e) => setKeyword(e.target.value)}
           />
         </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部類型</SelectItem>
+            <SelectItem value="install">安裝單</SelectItem>
+            <SelectItem value="followup">跟進單</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部狀態</SelectItem>
-            <SelectItem value="unscheduled">未約期</SelectItem>
+            <SelectItem value="unscheduled">待約期</SelectItem>
             <SelectItem value="scheduled">已約期</SelectItem>
             <SelectItem value="completed">已完成</SelectItem>
           </SelectContent>
@@ -226,11 +262,11 @@ function OrdersPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="hidden grid-cols-[1.4fr_2.4fr_1fr_1fr_1fr_auto] gap-4 border-b border-border px-4 py-2.5 text-[11px] tracking-wider text-muted-foreground lg:grid">
+        <div className="hidden grid-cols-[1.2fr_2.2fr_1.3fr_0.9fr_1fr_auto] gap-4 border-b border-border px-4 py-2.5 text-[11px] tracking-wider text-muted-foreground lg:grid">
           <span>客戶</span>
           <span>地址</span>
+          <span>死線／提醒</span>
           <span>狀態</span>
-          <span>定位</span>
           <span>安裝</span>
           <span className="w-8" />
         </div>
@@ -240,27 +276,44 @@ function OrdersPage() {
         )}
         {filtered.map((o) => {
           const open = expanded === o.id;
+          const u = urgencyOf(o);
           return (
             <div key={o.id} className="border-b border-border last:border-0">
               <button
-                className="grid w-full grid-cols-1 gap-2 px-4 py-3 text-left hover:bg-accent/40 lg:grid-cols-[1.4fr_2.4fr_1fr_1fr_1fr_auto] lg:items-center lg:gap-4"
+                className={cn(
+                  "grid w-full grid-cols-1 gap-2 px-4 py-3 text-left hover:bg-accent/40 lg:grid-cols-[1.2fr_2.2fr_1.3fr_0.9fr_1fr_auto] lg:items-center lg:gap-4",
+                  u.level === "overdue" && "bg-destructive/10",
+                  u.level === "urgent" && "bg-warning/10",
+                )}
                 onClick={() => setExpanded(open ? null : o.id)}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{o.customer_name}</p>
+                  <p className="truncate text-sm font-medium">
+                    <span
+                      className={cn(
+                        "mr-1.5 rounded px-1 py-0.5 text-[10px]",
+                        o.order_type === "followup"
+                          ? "bg-warning/20 text-warning"
+                          : "bg-primary/20 text-primary",
+                      )}
+                    >
+                      {o.order_type === "followup" ? "跟進" : "安裝"}
+                    </span>
+                    {o.customer_name}
+                  </p>
                   <p className="tabular truncate text-xs text-muted-foreground">
                     {o.customer_phone ?? "—"}
                   </p>
                 </div>
                 <p className="truncate text-sm text-muted-foreground">{o.raw_address}</p>
                 <span>
-                  <Badge variant="outline" className={statusTone(o.status)}>
-                    {STATUS_LABEL[o.status]}
+                  <Badge variant="outline" className={URGENCY_TONE[u.level]}>
+                    {reminderText(o, u)}
                   </Badge>
                 </span>
                 <span>
-                  <Badge variant="outline" className={geoTone(o.geo_status)}>
-                    {GEO_LABEL[o.geo_status]}
+                  <Badge variant="outline" className={statusTone(o.status)}>
+                    {STATUS_LABEL[o.status]}
                   </Badge>
                 </span>
                 <p className="tabular text-sm text-muted-foreground">
@@ -279,6 +332,10 @@ function OrdersPage() {
               {open && (
                 <div className="grid gap-4 border-t border-border bg-surface/60 px-4 py-4 md:grid-cols-2">
                   <div className="space-y-3 text-sm">
+                    <Field label="訂單類型" value={ORDER_TYPE_LABEL[o.order_type] ?? o.order_type} />
+                    <Field label="收訂日期" value={o.deposit_date ?? "—"} />
+                    <Field label="約期死線" value={u.deadline ?? (o.order_type === "followup" ? "跟進單（即刻處理）" : "—")} />
+                    <Field label="定位狀態" value={GEO_LABEL[o.geo_status] ?? o.geo_status} />
                     <Field label="完整地址" value={o.raw_address} />
                     <Field label="標準化地址" value={o.normalized_address ?? "—"} />
                     <Field
@@ -478,6 +535,33 @@ function OrdersPage() {
             <DialogTitle>新增訂單</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>訂單類型</Label>
+                <Select
+                  value={form.order_type}
+                  onValueChange={(v) => setForm({ ...form, order_type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="install">安裝單</SelectItem>
+                    <SelectItem value="followup">跟進單</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.order_type === "install" && (
+                <div className="space-y-1.5">
+                  <Label>收訂日期（+7 日死線）</Label>
+                  <Input
+                    type="date"
+                    value={form.deposit_date}
+                    onChange={(e) => setForm({ ...form, deposit_date: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>客戶姓名 *</Label>

@@ -34,12 +34,14 @@ export const Route = createFileRoute("/screenshot-import")({
 });
 
 const blank: ExtractedOrder = {
+  orderType: "install",
   orderNo: "",
   customerName: "",
   customerPhone: "",
   rawAddress: "",
   orderContent: "",
   measureDate: "",
+  depositDate: "",
   notes: "",
 };
 
@@ -154,6 +156,8 @@ function ScreenshotImportPage() {
       .insert(
         targets.map((i) => ({
           order_no: i.order.orderNo || null,
+          order_type: i.order.orderType,
+          deposit_date: i.order.depositDate || null,
           customer_name: i.order.customerName,
           customer_phone: i.order.customerPhone || null,
           raw_address: i.order.rawAddress,
@@ -267,6 +271,16 @@ function ScreenshotImportPage() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium">
+                      <span
+                        className={cn(
+                          "mr-1.5 rounded px-1 py-0.5 text-[10px]",
+                          item.order.orderType === "followup"
+                            ? "bg-warning/20 text-warning"
+                            : "bg-primary/20 text-primary",
+                        )}
+                      >
+                        {item.order.orderType === "followup" ? "跟進" : "安裝"}
+                      </span>
                       {item.order.customerName || item.name}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
@@ -339,6 +353,22 @@ function ScreenshotImportPage() {
                 className="max-h-[52vh] w-full rounded border border-border object-contain"
               />
               <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>訂單類型 *</Label>
+                  <div className="flex gap-2">
+                    {(["install", "followup"] as const).map((t) => (
+                      <Button
+                        key={t}
+                        type="button"
+                        size="sm"
+                        variant={selected.order.orderType === t ? "default" : "outline"}
+                        onClick={() => updateOrder(selected.id, { orderType: t })}
+                      >
+                        {t === "install" ? "安裝單" : "跟進單"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
                     label="訂單號"
@@ -361,6 +391,14 @@ function ScreenshotImportPage() {
                     value={selected.order.customerPhone}
                     onChange={(v) => updateOrder(selected.id, { customerPhone: v })}
                   />
+                  {selected.order.orderType === "install" && (
+                    <FormField
+                      label="收訂日期（+7 日為死線）"
+                      type="date"
+                      value={selected.order.depositDate}
+                      onChange={(v) => updateOrder(selected.id, { depositDate: v })}
+                    />
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>地址 *</Label>

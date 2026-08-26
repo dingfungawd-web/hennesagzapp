@@ -41,6 +41,8 @@ type Row = {
   install_date: string | null;
   install_time: string | null;
   status: string;
+  order_type: string;
+  deposit_date: string | null;
 };
 
 const HEADER_MAP: Record<string, keyof Row> = {
@@ -63,6 +65,8 @@ const HEADER_MAP: Record<string, keyof Row> = {
   訂單內容: "order_content",
   订单内容: "order_content",
   度尺日期: "measure_date",
+  收訂日期: "deposit_date",
+  收订日期: "deposit_date",
   安裝日期: "install_date",
   安装日期: "install_date",
   備註: "notes",
@@ -80,7 +84,6 @@ const NON_PRODUCT_KEYS = new Set([
   "地区",
   "接單日期",
   "接單同事",
-  "收訂日期",
   "訂金",
   "訂金收款方式",
   "已付餘款",
@@ -167,6 +170,8 @@ function ImportPage() {
         install_date: null,
         install_time: null,
         status: "unscheduled",
+        order_type: "install",
+        deposit_date: null,
       };
       let surname = "";
       let title = "";
@@ -185,13 +190,15 @@ function ImportPage() {
         }
         if (!field) continue;
         if (field === "measure_date") row.measure_date = normalizeDate(value);
+        else if (field === "deposit_date") row.deposit_date = normalizeDate(value);
         else if (field === "install_date") {
           row.install_date = normalizeDate(value);
           row.install_time = row.install_date ? normalizeTime(value) : null;
         } else if (field === "customer_name" || field === "raw_address")
           row[field] = String(value ?? "").trim();
-        else if (field === "status") continue;
+        else if (field === "status" || field === "order_type") continue;
         else row[field] = String(value ?? "").trim() || null;
+
       }
 
       if (!row.customer_name) row.customer_name = `${surname}${title}`.trim();
@@ -199,6 +206,7 @@ function ImportPage() {
         row.raw_address = `${district} ${row.raw_address}`;
       if (!row.order_content && products.length) row.order_content = products.join("、");
       if (row.install_date) row.status = "scheduled";
+      if (/-F$/i.test(row.order_no ?? "")) row.order_type = "followup";
 
       if (row.customer_name && row.raw_address) parsed.push(row);
     }
