@@ -274,7 +274,7 @@ function ImportPage() {
       .insert({
         batch_id: crypto.randomUUID(),
         file_name: fileName,
-        total_count: rows.length,
+        total_count: finalRows.length,
         status: "processing",
       })
       .select()
