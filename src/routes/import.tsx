@@ -47,59 +47,76 @@ type Row = {
 
 const HEADER_MAP: Record<string, keyof Row> = {
   订单号: "order_no",
-  订单号: "order_no",
+  訂單號: "order_no",
   工程编号: "order_no",
-  工程编号: "order_no",
+  工程編號: "order_no",
   客户姓名: "customer_name",
-  客户姓名: "customer_name",
+  客戶姓名: "customer_name",
   姓名: "customer_name",
   电话: "customer_phone",
-  电话: "customer_phone",
+  電話: "customer_phone",
   联络电话: "customer_phone",
-  联络电话: "customer_phone",
+  聯絡電話: "customer_phone",
   地址: "raw_address",
   客户地址: "raw_address",
-  客户地址: "raw_address",
+  客戶地址: "raw_address",
   单位: "raw_address",
-  单位: "raw_address",
+  單位: "raw_address",
   订单内容: "order_content",
-  订单内容: "order_content",
+  訂單內容: "order_content",
   度尺日期: "measure_date",
   收订日期: "deposit_date",
-  收订日期: "deposit_date",
+  收訂日期: "deposit_date",
   安装日期: "install_date",
-  安装日期: "install_date",
+  安裝日期: "install_date",
   备注: "notes",
-  备注: "notes",
+  備註: "notes",
 };
+
+const SURNAME_KEYS = new Set(["客户姓氏", "客戶姓氏"]);
+const TITLE_KEYS = new Set(["客户称呼", "客戶稱呼"]);
+const DISTRICT_KEYS = new Set(["地区", "地區"]);
 
 /** 这些栏位属于资料栏，其余数字栏视为产品数量 */
 const NON_PRODUCT_KEYS = new Set([
   ...Object.keys(HEADER_MAP),
-  "客户姓氏",
-  "客户姓氏",
-  "客户称呼",
-  "客户称呼",
-  "地区",
-  "地区",
+  ...SURNAME_KEYS,
+  ...TITLE_KEYS,
+  ...DISTRICT_KEYS,
   "接单日期",
+  "接單日期",
   "接单同事",
+  "接單同事",
   "订金",
+  "訂金",
   "订金收款方式",
+  "訂金收款方式",
   "已付余款",
+  "已付餘款",
   "已付余款方式",
+  "已付餘款方式",
   "跟进日期",
+  "跟進日期",
   "跟进余款",
+  "跟進餘款",
   "跟进余款方式",
+  "跟進餘款方式",
   "余款",
+  "餘款",
   "营业额",
+  "營業額",
   "全付折扣",
   "全单折扣",
+  "全單折扣",
   "保养费",
+  "保養費",
   "保养日期",
+  "保養日期",
   "生意来源",
+  "生意來源",
   "度尺人",
   "安装同事",
+  "安裝同事",
   "Invitation Date",
   "Score",
 ]);
@@ -181,9 +198,9 @@ function ImportPage() {
       for (const [rawKey, value] of Object.entries(raw)) {
         const key = rawKey.trim();
         const field = HEADER_MAP[key];
-        if (key === "客户姓氏" || key === "客户姓氏") surname = String(value ?? "").trim();
-        else if (key === "客户称呼" || key === "客户称呼") title = String(value ?? "").trim();
-        else if (key === "地区" || key === "地区") district = String(value ?? "").trim();
+        if (SURNAME_KEYS.has(key)) surname = String(value ?? "").trim();
+        else if (TITLE_KEYS.has(key)) title = String(value ?? "").trim();
+        else if (DISTRICT_KEYS.has(key)) district = String(value ?? "").trim();
         else if (!field && !NON_PRODUCT_KEYS.has(key)) {
           const n = Number(String(value ?? "").trim());
           if (Number.isFinite(n) && n > 0) products.push(`${key} x${n}`);
