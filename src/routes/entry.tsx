@@ -39,22 +39,23 @@ function EntryPage() {
   const teamName = (id: string | null) =>
     id ? (teams.find((t) => t.id === id)?.name ?? "未分队") : "未分队";
 
-  const today = ymd(new Date());
+  // 只显示透过本网站进行过「期」相关操作（约期／改期／取消约期／分队）且尚未确认入 app 嘅订单
   const list = useMemo(() => {
     return orders
-      .filter(
-        (o) =>
-          !o.in_app &&
-          o.status !== "completed" &&
-          !!o.install_date &&
-          o.install_date >= today,
-      )
+      .filter((o) => o.app_sync_pending && !o.in_app)
       .sort((a, b) => {
-        const d = (a.install_date ?? "").localeCompare(b.install_date ?? "");
-        if (d !== 0) return d;
+        // 已取消约期（冇日期）排最顶
+        const ad = a.install_date ?? "";
+        const bd = b.install_date ?? "";
+        if (!ad && bd) return -1;
+        if (ad && !bd) return 1;
+        if (ad && bd) {
+          const d = ad.localeCompare(bd);
+          if (d !== 0) return d;
+        }
         return (a.install_time ?? "").localeCompare(b.install_time ?? "");
       });
-  }, [orders, today]);
+  }, [orders]);
 
   const selectedIds = Object.keys(picked).filter((k) => picked[k]);
   const allPicked = list.length > 0 && selectedIds.length === list.length;
@@ -64,7 +65,7 @@ function EntryPage() {
     setSaving(true);
     const { error } = await supabase
       .from("orders")
-      .update({ in_app: true })
+      .update({ in_app: true, app_sync_pending: false })
       .in("id", selectedIds);
     setSaving(false);
     if (error) {
