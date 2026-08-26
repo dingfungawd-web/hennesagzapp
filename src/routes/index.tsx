@@ -534,9 +534,7 @@ function OrdersPage() {
                         size="sm"
                         variant="ghost"
                         className="text-destructive"
-                        onClick={() => {
-                          if (confirm("确定删除呢张订单？")) deleteOrder.mutate(o.id);
-                        }}
+                        onClick={() => setDelTarget(o)}
                       >
                         <Trash2 className="size-4" />
                         删除
