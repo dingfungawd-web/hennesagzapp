@@ -162,7 +162,8 @@ function ImportPage() {
 
   const parseFile = async (file: File) => {
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { cellDates: true });
+    // cellStyles is required for SheetJS to retain Excel row visibility metadata.
+    const wb = XLSX.read(buf, { cellDates: true, cellStyles: true });
     const sheetName = wb.SheetNames[0];
     if (!sheetName) {
       toast.error("Excel 冇工作表");
@@ -173,7 +174,11 @@ function ImportPage() {
       toast.error("读取工作表失败");
       return;
     }
-    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+    // Respect both manually hidden rows and rows hidden by a saved Excel filter.
+    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: "",
+      skipHidden: true,
+    });
     const parsed: Row[] = [];
     for (const raw of json) {
       const row: Row = {
@@ -325,7 +330,7 @@ function ImportPage() {
         <div>
           <p className="text-sm font-medium">{fileName || "点击上载 Excel（.xlsx / .csv）"}</p>
           <p className="text-xs text-muted-foreground">
-            栏位需包含：客户姓名、地址（其余可选）
+            栏位需包含：客户姓名、地址（只汇入 Excel 内可见的资料行）
           </p>
         </div>
         <input
