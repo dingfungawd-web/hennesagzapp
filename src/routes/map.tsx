@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Users, X } from "lucide-react";
+import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Search, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -355,7 +355,7 @@ function MapPage() {
             )}
           </div>
           <div className="max-h-[62vh] overflow-auto p-2">
-            {located.map((o) => (
+            {listed.map((o) => (
               <div
                 key={o.id}
                 className="rounded p-2 transition-colors hover:bg-accent/40"
@@ -388,7 +388,10 @@ function MapPage() {
                     size="sm"
                     variant={origin?.id === o.id ? "default" : "outline"}
                     className="h-7 flex-1 text-xs"
-                    onClick={() => setOrigin(o)}
+                    onClick={() => {
+                      setOrigin(o);
+                      focus(o);
+                    }}
                   >
                     <Navigation className="size-3" />
                     设起点
@@ -397,7 +400,10 @@ function MapPage() {
                     size="sm"
                     variant={dest?.id === o.id ? "default" : "outline"}
                     className="h-7 flex-1 text-xs"
-                    onClick={() => setDest(o)}
+                    onClick={() => {
+                      setDest(o);
+                      focus(o);
+                    }}
                   >
                     <Flag className="size-3" />
                     设终点
@@ -423,9 +429,9 @@ function MapPage() {
                 </div>
               </div>
             ))}
-            {located.length === 0 && (
+            {listed.length === 0 && (
               <p className="p-4 text-center text-xs text-muted-foreground">
-                未有已定位订单，先去订单列表做地址解析。
+                {search ? "找不到符合的订单。" : "未有已定位订单，先去约期提醒页做地址解析。"}
               </p>
             )}
           </div>
