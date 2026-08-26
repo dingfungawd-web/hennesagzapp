@@ -213,14 +213,26 @@ function MapPage() {
         offset: new AMap.Pixel(0, -32),
       });
     }
-    const markers = located.map((o) => {
+    const shown = [...located];
+    for (const p of [origin, dest]) {
+      if (p && p.latitude && p.longitude && !shown.some((x) => x.id === p.id)) shown.push(p);
+    }
+    const markers = shown.map((o) => {
       const isScheduled = o.status !== "unscheduled";
+      const role = origin?.id === o.id ? "origin" : dest?.id === o.id ? "dest" : null;
+      const content =
+        role === "origin"
+          ? `<div style="width:30px;height:30px;border-radius:9999px;background:#22c55e;border:3px solid #0f172a;box-shadow:0 0 0 2px #22c55e;display:flex;align-items:center;justify-content:center;color:#052e16;font-size:13px;font-weight:800">起</div>`
+          : role === "dest"
+            ? `<div style="width:30px;height:30px;border-radius:9999px;background:#ef4444;border:3px solid #0f172a;box-shadow:0 0 0 2px #ef4444;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800">终</div>`
+            : isScheduled
+              ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">约</div>`
+              : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`;
       const marker = new AMap.Marker({
         position: [Number(o.longitude), Number(o.latitude)],
-        offset: new AMap.Pixel(-11, -11),
-        content: isScheduled
-          ? `<div style="width:22px;height:22px;border-radius:4px;background:#38bdf8;border:2px solid #0f172a;box-shadow:0 0 0 1px #38bdf8;display:flex;align-items:center;justify-content:center;color:#0f172a;font-size:11px;font-weight:700">约</div>`
-          : `<div style="width:22px;height:22px;border-radius:9999px;background:#f59e0b;border:2px solid #0f172a;box-shadow:0 0 0 1px #f59e0b"></div>`,
+        offset: new AMap.Pixel(role ? -15 : -11, role ? -15 : -11),
+        zIndex: role ? 200 : 100,
+        content,
       });
       marker.on("click", () => {
         if (!destRef.current) setDest(o);
