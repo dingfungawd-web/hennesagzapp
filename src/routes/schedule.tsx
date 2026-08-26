@@ -83,6 +83,8 @@ function SchedulePage() {
 
   const { data: teams = [] } = useTeams();
   const updateOrder = useUpdateOrder();
+  const deleteOrder = useDeleteOrder();
+  const [delTarget, setDelTarget] = useState<Order | null>(null);
 
   const days = useMemo(() => {
     if (view === "day") return [new Date(anchor)];
