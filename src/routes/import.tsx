@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileSpreadsheet, Download, Save } from "lucide-react";
@@ -43,7 +43,14 @@ type Row = {
   status: string;
   order_type: string;
   deposit_date: string | null;
+  /** 只用于预览／排序，唔会写入资料库 */
+  followup_date: string | null;
+  followup_time: string | null;
+  excel_install_date: string | null;
+  excel_install_time: string | null;
 };
+
+type ImportType = "install" | "followup";
 
 const HEADER_MAP: Record<string, keyof Row> = {
   订单号: "order_no",
@@ -69,6 +76,8 @@ const HEADER_MAP: Record<string, keyof Row> = {
   收訂日期: "deposit_date",
   安装日期: "install_date",
   安裝日期: "install_date",
+  跟进日期: "followup_date",
+  跟進日期: "followup_date",
   备注: "notes",
   備註: "notes",
 };
@@ -95,8 +104,6 @@ const NON_PRODUCT_KEYS = new Set([
   "已付餘款",
   "已付余款方式",
   "已付餘款方式",
-  "跟进日期",
-  "跟進日期",
   "跟进余款",
   "跟進餘款",
   "跟进余款方式",
@@ -152,9 +159,23 @@ function normalizeTime(v: unknown): string | null {
   return `${start}-${shiftTime(start, 2)}`;
 }
 
+/** 按今次汇入嘅单类型，决定用跟进日期定安装日期做排期日期 */
+function applyType(r: Row, type: ImportType): Row {
+  const date = type === "followup" ? r.followup_date : r.excel_install_date;
+  const time = type === "followup" ? r.followup_time : r.excel_install_time;
+  return {
+    ...r,
+    order_type: type,
+    install_date: date,
+    install_time: date ? time : null,
+    status: date ? "scheduled" : "unscheduled",
+  };
+}
+
 function ImportPage() {
   const qc = useQueryClient();
   const [rows, setRows] = useState<Row[]>([]);
+  const [importType, setImportType] = useState<ImportType>("followup");
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
@@ -194,6 +215,10 @@ function ImportPage() {
         status: "unscheduled",
         order_type: "install",
         deposit_date: null,
+        followup_date: null,
+        followup_time: null,
+        excel_install_date: null,
+        excel_install_time: null,
       };
       let surname = "";
       let title = "";
@@ -214,8 +239,11 @@ function ImportPage() {
         if (field === "measure_date") row.measure_date = normalizeDate(value);
         else if (field === "deposit_date") row.deposit_date = normalizeDate(value);
         else if (field === "install_date") {
-          row.install_date = normalizeDate(value);
-          row.install_time = row.install_date ? normalizeTime(value) : null;
+          row.excel_install_date = normalizeDate(value);
+          row.excel_install_time = row.excel_install_date ? normalizeTime(value) : null;
+        } else if (field === "followup_date") {
+          row.followup_date = normalizeDate(value);
+          row.followup_time = row.followup_date ? normalizeTime(value) : null;
         } else if (field === "customer_name" || field === "raw_address")
           row[field] = String(value ?? "").trim();
         else if (field === "status" || field === "order_type") continue;
@@ -227,8 +255,7 @@ function ImportPage() {
       if (row.raw_address && district && !row.raw_address.includes(district))
         row.raw_address = `${district} ${row.raw_address}`;
       if (!row.order_content && products.length) row.order_content = products.join("、");
-      if (row.install_date) row.status = "scheduled";
-      if (/-F$/i.test(row.order_no ?? "")) row.order_type = "followup";
+
 
       if (row.customer_name && row.raw_address) parsed.push(row);
     }
@@ -238,15 +265,20 @@ function ImportPage() {
   };
 
 
+  const finalRows = useMemo(() => {
+    const list = rows.map((r) => applyType(r, importType));
+    return list.sort((a, b) => (a.install_date ?? "9999").localeCompare(b.install_date ?? "9999"));
+  }, [rows, importType]);
+
   const save = async () => {
-    if (rows.length === 0) return;
+    if (finalRows.length === 0) return;
     setSaving(true);
     const { data: batch, error: batchErr } = await supabase
       .from("import_batches")
       .insert({
         batch_id: crypto.randomUUID(),
         file_name: fileName,
-        total_count: rows.length,
+        total_count: finalRows.length,
         status: "processing",
       })
       .select()
@@ -258,8 +290,17 @@ function ImportPage() {
     }
     const inserted: { id: string; raw_address: string; status: string; install_date: string | null }[] = [];
     let error: { message: string } | null = null;
-    for (let i = 0; i < rows.length; i += 300) {
-      const chunk = rows.slice(i, i + 300).map((r) => ({ ...r, import_batch_id: batch.id }));
+    for (let i = 0; i < finalRows.length; i += 300) {
+      const chunk = finalRows.slice(i, i + 300).map((r) => {
+        const {
+          followup_date: _fd,
+          followup_time: _ft,
+          excel_install_date: _ed,
+          excel_install_time: _et,
+          ...rest
+        } = r;
+        return { ...rest, import_batch_id: batch.id };
+      });
       const res = await supabase.from("orders").insert(chunk).select("id, raw_address, status, install_date");
       if (res.error) {
         error = res.error;
@@ -272,7 +313,7 @@ function ImportPage() {
       .update({
         status: error ? "failed" : "completed",
         success_count: inserted.length,
-        failed_count: rows.length - inserted.length,
+        failed_count: finalRows.length - inserted.length,
       })
       .eq("id", batch.id);
     setSaving(false);
@@ -280,7 +321,7 @@ function ImportPage() {
       toast.error("汇入失败：" + error.message);
       return;
     }
-    toast.success(`已汇入 ${rows.length} 张订单，正在自动解析地址…`);
+    toast.success(`已汇入 ${finalRows.length} 张订单，正在自动解析地址…`);
 
     setRows([]);
     setFileName("");
@@ -318,13 +359,34 @@ function ImportPage() {
             <Download className="size-4" />
             下载范本
           </Button>
-          <Button size="sm" onClick={save} disabled={saving || rows.length === 0}>
+          <Button size="sm" onClick={save} disabled={saving || finalRows.length === 0}>
             <Save className="size-4" />
-            {progress || `汇入 ${rows.length || ""} 张`}
+            {progress || `汇入 ${finalRows.length || ""} 张`}
           </Button>
         </>
       }
     >
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
+        <span className="text-sm font-medium">今次汇入嘅单类型</span>
+        <div className="flex gap-2">
+          {(["followup", "install"] as ImportType[]).map((t) => (
+            <Button
+              key={t}
+              size="sm"
+              variant={importType === t ? "default" : "outline"}
+              onClick={() => setImportType(t)}
+            >
+              {t === "followup" ? "跟进单" : "安装单"}
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {importType === "followup"
+            ? "以「跟进日期」作为排期日期排序汇入"
+            : "以「安装日期」作为排期日期；未约期安装单以「收订日期 + 7 日」计约期死线"}
+        </p>
+      </div>
+
       <label className="mb-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card p-10 text-center transition-colors hover:border-primary/50">
         <FileSpreadsheet className="size-8 text-muted-foreground" />
         <div>
@@ -353,20 +415,26 @@ function ImportPage() {
                 <th className="px-3 py-2">电话</th>
                 <th className="px-3 py-2">地址</th>
                 <th className="px-3 py-2">内容</th>
-                <th className="px-3 py-2">度尺</th>
-                <th className="px-3 py-2">安装</th>
+                <th className="px-3 py-2">跟进日期</th>
+                <th className="px-3 py-2">安装日期</th>
               </tr>
             </thead>
             <tbody>
-              {rows.slice(0, 50).map((r, i) => (
+              {finalRows.slice(0, 50).map((r, i) => (
                 <tr key={i} className="border-b border-border last:border-0">
                   <td className="px-3 py-2">{r.customer_name}</td>
                   <td className="tabular px-3 py-2 text-muted-foreground">{r.customer_phone ?? "—"}</td>
                   <td className="max-w-80 truncate px-3 py-2 text-muted-foreground">{r.raw_address}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.order_content ?? "—"}</td>
-                  <td className="tabular px-3 py-2 text-muted-foreground">{r.measure_date ?? "—"}</td>
                   <td className="tabular px-3 py-2 text-muted-foreground">
-                    {r.install_date ? `${r.install_date}${r.install_time ? ` ${r.install_time}` : ""}` : "—"}
+                    {r.followup_date
+                      ? `${r.followup_date}${r.followup_time ? ` ${r.followup_time}` : ""}`
+                      : "—"}
+                  </td>
+                  <td className="tabular px-3 py-2 text-muted-foreground">
+                    {r.excel_install_date
+                      ? `${r.excel_install_date}${r.excel_install_time ? ` ${r.excel_install_time}` : ""}`
+                      : "—"}
                   </td>
                 </tr>
               ))}
