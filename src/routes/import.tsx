@@ -251,8 +251,7 @@ function ImportPage() {
       if (row.raw_address && district && !row.raw_address.includes(district))
         row.raw_address = `${district} ${row.raw_address}`;
       if (!row.order_content && products.length) row.order_content = products.join("、");
-      if (row.install_date) row.status = "scheduled";
-      if (/-F$/i.test(row.order_no ?? "")) row.order_type = "followup";
+
 
       if (row.customer_name && row.raw_address) parsed.push(row);
     }
