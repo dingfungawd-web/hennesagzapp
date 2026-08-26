@@ -195,6 +195,7 @@ function MapPage() {
   const originRef = useRef<Order | null>(null);
   const destRef = useRef<Order | null>(null);
   const infoRef = useRef<any>(null);
+  const fitKeyRef = useRef<string>("");
   useEffect(() => {
     originRef.current = origin;
   }, [origin]);
