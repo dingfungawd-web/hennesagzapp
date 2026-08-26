@@ -112,13 +112,21 @@ function EntryPage() {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-display text-sm font-semibold text-primary">
-                    {o.install_date}
-                  </span>
-                  {o.install_time && (
-                    <span className="text-xs text-muted-foreground">
-                      {formatTimeRange(o.install_time)}
-                    </span>
+                  {o.install_date ? (
+                    <>
+                      <span className="font-display text-sm font-semibold text-primary">
+                        {o.install_date}
+                      </span>
+                      {o.install_time && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeRange(o.install_time)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <Badge variant="destructive" className="text-[10px]">
+                      已取消约期
+                    </Badge>
                   )}
                   <Badge variant="outline" className="text-[10px]">
                     {ORDER_TYPE_LABEL[o.order_type] ?? o.order_type}
