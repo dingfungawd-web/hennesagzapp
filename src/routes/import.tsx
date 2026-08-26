@@ -213,6 +213,8 @@ function ImportPage() {
         status: "unscheduled",
         order_type: "install",
         deposit_date: null,
+        followup_date: null,
+        followup_time: null,
       };
       let surname = "";
       let title = "";
