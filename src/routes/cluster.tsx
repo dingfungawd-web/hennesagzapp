@@ -142,6 +142,8 @@ function ClusterPage() {
           install_time: d.time,
           team_id: d.team === "none" ? null : d.team,
           status: "scheduled",
+          app_sync_pending: true,
+          in_app: false,
         })
         .eq("id", id);
       if (error) failed++;
