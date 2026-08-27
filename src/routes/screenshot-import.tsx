@@ -161,7 +161,6 @@ function ScreenshotImportPage() {
           customer_phone: i.order.customerPhone || null,
           raw_address: i.order.rawAddress,
           order_content: i.order.orderContent || null,
-          measure_date: i.order.measureDate || null,
           notes: i.order.notes || null,
         })),
       )
