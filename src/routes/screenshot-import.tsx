@@ -183,7 +183,8 @@ function ScreenshotImportPage() {
     );
     setSaving(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (!summary.configured) toast.error("未设定高德 API Key，地址未解析");
+    if (!summary.configured) toast.error(summary.message ?? "未设定高德 API Key，地址未解析");
+    else if (summary.message) toast.error(summary.message);
     else
       toast.success(
         `地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失败 ${summary.failed}` : ""}`,

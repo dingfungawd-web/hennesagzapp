@@ -19,18 +19,26 @@ export const geocodeAddresses = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const apiKey = process.env["AMAP_API_KEY"];
-    if (!apiKey) return { configured: false, results: [] as GeoResult[] };
-    const results: GeoResult[] = [];
-    for (const item of data.items) {
-      const geo = await geocodeOne(item.address, apiKey);
-      if (geo) {
-        results.push({ id: item.id, ok: true, lat: geo.lat, lon: geo.lon, formatted: geo.formatted });
-      } else {
-        results.push({ id: item.id, ok: false });
-      }
-      await new Promise((r) => setTimeout(r, 220));
-    }
-    return { configured: true, results };
+    if (!apiKey)
+      return {
+        configured: false,
+        results: [] as GeoResult[],
+        message: "服务器未设定 AMAP_API_KEY" as string | undefined,
+      };
+    // 并发小批处理，避免在 serverless 环境因逐条等待而超时
+    const results: GeoResult[] = await Promise.all(
+      data.items.map(async (item) => {
+        try {
+          const geo = await geocodeOne(item.address, apiKey);
+          if (geo)
+            return { id: item.id, ok: true, lat: geo.lat, lon: geo.lon, formatted: geo.formatted };
+        } catch {
+          // 视为失败
+        }
+        return { id: item.id, ok: false };
+      }),
+    );
+    return { configured: true, results, message: undefined as string | undefined };
   });
 
 export const drivingDuration = createServerFn({ method: "POST" })
