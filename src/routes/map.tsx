@@ -320,7 +320,7 @@ function MapPage() {
   return (
     <AppShell
       title="地图路线"
-      subtitle={`显示 ${located.length} 张（未约＋今天或之后已约）${hiddenCount ? ` · 已隐藏 ${hiddenCount}` : ""}`}
+      subtitle={`显示 ${located.length} 张${hasDateFilter ? "（已筛选日期）" : "（未约＋今天或之后已约）"}${hiddenCount ? ` · 已隐藏 ${hiddenCount}` : ""}`}
       actions={
         <div className="flex gap-2">
           {hiddenCount > 0 && (
