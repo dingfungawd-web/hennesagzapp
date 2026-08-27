@@ -342,6 +342,53 @@ function MapPage() {
         </div>
       )}
 
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3">
+        <CalendarDays className="size-4 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground">日期筛选</span>
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="h-8 w-auto text-xs"
+        />
+        <span className="text-xs text-muted-foreground">至</span>
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="h-8 w-auto text-xs"
+        />
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={includeUnscheduled}
+            onChange={(e) => setIncludeUnscheduled(e.target.checked)}
+            className="size-3"
+          />
+          含未约期
+        </label>
+        {(hasDateFilter || !includeUnscheduled) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 text-xs"
+            onClick={() => {
+              setDateFrom("");
+              setDateTo("");
+              setIncludeUnscheduled(true);
+            }}
+          >
+            <RotateCcw className="size-3" />
+            重设
+          </Button>
+        )}
+        {hasDateFilter && (
+          <span className="ml-auto text-xs text-muted-foreground">
+            符合日期：{located.length} 张
+          </span>
+        )}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-lg border border-border bg-card">
           <div className="space-y-2 border-b border-border p-3">
