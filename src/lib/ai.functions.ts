@@ -38,7 +38,6 @@ export const analyzeScreenshot = createServerFn({ method: "POST" })
         customerPhone: parsed["customerPhone"] ?? "",
         rawAddress: parsed["rawAddress"] ?? "",
         orderContent: parsed["orderContent"] ?? "",
-        measureDate: parsed["measureDate"] ?? "",
         depositDate: parsed["depositDate"] ?? "",
         notes: parsed["notes"] ?? "",
       };
