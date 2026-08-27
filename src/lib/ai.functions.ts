@@ -9,7 +9,6 @@ export type ExtractedOrder = {
   customerPhone: string;
   rawAddress: string;
   orderContent: string;
-  measureDate: string;
   depositDate: string;
   notes: string;
 };
