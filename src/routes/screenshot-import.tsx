@@ -375,12 +375,6 @@ function ScreenshotImportPage() {
                     onChange={(v) => updateOrder(selected.id, { orderNo: v })}
                   />
                   <FormField
-                    label="度尺日期"
-                    type="date"
-                    value={selected.order.measureDate}
-                    onChange={(v) => updateOrder(selected.id, { measureDate: v })}
-                  />
-                  <FormField
                     label="客户姓名 *"
                     value={selected.order.customerName}
                     onChange={(v) => updateOrder(selected.id, { customerName: v })}
