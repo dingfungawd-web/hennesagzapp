@@ -2,7 +2,7 @@
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GATEWAY_MODEL = "google/gemini-3.5-flash";
 // Google Gemini direct API model (used when GEMINI_API_KEY is set, e.g. on Vercel)
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.6-flash";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 export const SCREENSHOT_PROMPT = `你是一个专门从纱窗公司订单 App 截图中提取订单资料的助手。
