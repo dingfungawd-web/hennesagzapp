@@ -1,7 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { geocodeAddresses } from "@/lib/amap.functions";
 
-export type GeocodeSummary = { configured: boolean; ok: number; failed: number };
+export type GeocodeSummary = {
+  configured: boolean;
+  ok: number;
+  failed: number;
+  message?: string;
+};
 
 /** 对指定订单自动做地址解析并写回资料库 */
 export async function autoGeocodeOrders(
