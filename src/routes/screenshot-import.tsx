@@ -40,7 +40,6 @@ const blank: ExtractedOrder = {
   customerPhone: "",
   rawAddress: "",
   orderContent: "",
-  measureDate: "",
   depositDate: "",
   notes: "",
 };
@@ -162,7 +161,6 @@ function ScreenshotImportPage() {
           customer_phone: i.order.customerPhone || null,
           raw_address: i.order.rawAddress,
           order_content: i.order.orderContent || null,
-          measure_date: i.order.measureDate || null,
           notes: i.order.notes || null,
         })),
       )
@@ -375,12 +373,6 @@ function ScreenshotImportPage() {
                     label="订单号"
                     value={selected.order.orderNo}
                     onChange={(v) => updateOrder(selected.id, { orderNo: v })}
-                  />
-                  <FormField
-                    label="度尺日期"
-                    type="date"
-                    value={selected.order.measureDate}
-                    onChange={(v) => updateOrder(selected.id, { measureDate: v })}
                   />
                   <FormField
                     label="客户姓名 *"
