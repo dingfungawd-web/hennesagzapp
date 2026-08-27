@@ -16,8 +16,7 @@ export const SCREENSHOT_PROMPT = `你是一个专门从纱窗公司订单 App �
 2. 地址要完整，包含城市（广州市/佛山市）、区、小区、栋号、室号；标题同绿色大字都系地址
 3. customerName 只要姓名（例如「陈先生」「林太太」），唔好包电话
 4. depositDate：收订日期／订料日期／手尾订料日期，格式 YYYY-MM-DD，睇唔到就 null
-5. measureDate：度呎日期，格式 YYYY-MM-DD
-6. orderContent：产品／备注内的产品资料（例如 H2 x 4、H1）
+5. orderContent：产品／备注内的产品资料（例如 H2 x 4、H1）
 7. 跟进单请将「跟进原因」及跟进位置内容放入 notes
 8. 睇唔到嘅栏位就返回 null；日期统一 YYYY-MM-DD
 9. 所有文字输出必须为【中文简体字】（简体中文），即使截图用繁体字或粤语，都要转换成简体中文再输出（地址、姓名、订单内容、备注全部一样）`;
