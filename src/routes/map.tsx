@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Search, Users, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, RotateCcw, Route as RouteIcon, Search, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders, useTeams } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
-import { formatTimeRange, isUpcoming, STATUS_LABEL, type Order } from "@/lib/domain";
+import { formatTimeRange, STATUS_LABEL, ymd, type Order } from "@/lib/domain";
 
 
 export const Route = createFileRoute("/map")({
@@ -137,10 +137,22 @@ function MapPage() {
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const hiddenCount = Object.values(hidden).filter(Boolean).length;
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [includeUnscheduled, setIncludeUnscheduled] = useState(true);
+  const hasDateFilter = Boolean(dateFrom || dateTo);
 
-  const located = orders.filter(
-    (o) => o.latitude && o.longitude && isUpcoming(o) && !hidden[o.id],
-  );
+  const today = ymd(new Date());
+  const located = orders.filter((o) => {
+    if (!o.latitude || !o.longitude) return false;
+    if (hidden[o.id]) return false;
+    if (o.status === "completed") return false;
+    if (!o.install_date) return includeUnscheduled;
+    if (dateFrom && o.install_date < dateFrom) return false;
+    if (dateTo && o.install_date > dateTo) return false;
+    if (!hasDateFilter) return o.install_date >= today;
+    return true;
+  });
 
   const q = search.trim().toLowerCase();
   const digits = q.replace(/\D/g, "");
@@ -308,7 +320,7 @@ function MapPage() {
   return (
     <AppShell
       title="地图路线"
-      subtitle={`显示 ${located.length} 张（未约＋今天或之后已约）${hiddenCount ? ` · 已隐藏 ${hiddenCount}` : ""}`}
+      subtitle={`显示 ${located.length} 张${hasDateFilter ? "（已筛选日期）" : "（未约＋今天或之后已约）"}${hiddenCount ? ` · 已隐藏 ${hiddenCount}` : ""}`}
       actions={
         <div className="flex gap-2">
           {hiddenCount > 0 && (
@@ -329,6 +341,53 @@ function MapPage() {
           未设定高德地图 JS Key，地图无法显示。请提供 VITE_AMAP_JS_KEY 后再试。
         </div>
       )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3">
+        <CalendarDays className="size-4 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground">日期筛选</span>
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="h-8 w-auto text-xs"
+        />
+        <span className="text-xs text-muted-foreground">至</span>
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="h-8 w-auto text-xs"
+        />
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={includeUnscheduled}
+            onChange={(e) => setIncludeUnscheduled(e.target.checked)}
+            className="size-3"
+          />
+          含未约期
+        </label>
+        {(hasDateFilter || !includeUnscheduled) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 text-xs"
+            onClick={() => {
+              setDateFrom("");
+              setDateTo("");
+              setIncludeUnscheduled(true);
+            }}
+          >
+            <RotateCcw className="size-3" />
+            重设
+          </Button>
+        )}
+        {hasDateFilter && (
+          <span className="ml-auto text-xs text-muted-foreground">
+            符合日期：{located.length} 张
+          </span>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-lg border border-border bg-card">
