@@ -116,7 +116,7 @@ export async function callAi(messages: AiMessage[]): Promise<string> {
       generationConfig: { temperature: 0.1 },
     };
     if (systemText && typeof systemText.content === "string") {
-      body["systemInstruction"] = systemText.content;
+      body["systemInstruction"] = { parts: [{ text: systemText.content }] };
     }
     return await callGeminiDirect(cfg.key, body);
   }
