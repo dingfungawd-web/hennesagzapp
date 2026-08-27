@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, Route as RouteIcon, Search, Users, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Eye, EyeOff, Flag, MapPin, Navigation, Phone, RotateCcw, Route as RouteIcon, Search, Users, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrders, useTeams } from "@/lib/queries";
 import { getAmapConfig, drivingDuration } from "@/lib/amap.functions";
-import { formatTimeRange, isUpcoming, STATUS_LABEL, type Order } from "@/lib/domain";
+import { formatTimeRange, STATUS_LABEL, ymd, type Order } from "@/lib/domain";
 
 
 export const Route = createFileRoute("/map")({
@@ -137,10 +137,22 @@ function MapPage() {
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const hiddenCount = Object.values(hidden).filter(Boolean).length;
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [includeUnscheduled, setIncludeUnscheduled] = useState(true);
+  const hasDateFilter = Boolean(dateFrom || dateTo);
 
-  const located = orders.filter(
-    (o) => o.latitude && o.longitude && isUpcoming(o) && !hidden[o.id],
-  );
+  const today = ymd(new Date());
+  const located = orders.filter((o) => {
+    if (!o.latitude || !o.longitude) return false;
+    if (hidden[o.id]) return false;
+    if (o.status === "completed") return false;
+    if (!o.install_date) return includeUnscheduled;
+    if (dateFrom && o.install_date < dateFrom) return false;
+    if (dateTo && o.install_date > dateTo) return false;
+    if (!hasDateFilter) return o.install_date >= today;
+    return true;
+  });
 
   const q = search.trim().toLowerCase();
   const digits = q.replace(/\D/g, "");
