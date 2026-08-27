@@ -40,7 +40,6 @@ const blank: ExtractedOrder = {
   customerPhone: "",
   rawAddress: "",
   orderContent: "",
-  measureDate: "",
   depositDate: "",
   notes: "",
 };
