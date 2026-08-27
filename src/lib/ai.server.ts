@@ -22,15 +22,22 @@ export const SCREENSHOT_PROMPT = `你是一个专门从纱窗公司订单 App �
 8. 睇唔到嘅栏位就返回 null；日期统一 YYYY-MM-DD
 9. 所有文字输出必须为【中文简体字】（简体中文），即使截图用繁体字或粤语，都要转换成简体中文再输出（地址、姓名、订单内容、备注全部一样）`;
 
+type AiMessage = {
+  role: "system" | "user";
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+};
+
+type AiConfig = { mode: "gemini"; key: string } | { mode: "gateway"; key: string };
+
 /**
  * 优先用 GEMINI_API_KEY 直连 Google Gemini API（适合 Vercel 等外部部署），
  * 其次用 LOVABLE_API_KEY 经 Lovable AI Gateway（Lovable 预览用）。
  */
-function resolveAiConfig() {
+function resolveAiConfig(): AiConfig | null {
   const geminiKey = process.env["GEMINI_API_KEY"];
-  if (geminiKey) return { mode: "gemini" as const, key: geminiKey };
+  if (geminiKey) return { mode: "gemini", key: geminiKey };
   const lovableKey = process.env["LOVABLE_API_KEY"];
-  if (lovableKey) return { mode: "gateway" as const, key: lovableKey };
+  if (lovableKey) return { mode: "gateway", key: lovableKey };
   return null;
 }
 
@@ -38,10 +45,10 @@ function resolveAiConfig() {
 function parseDataUrl(dataUrl: string): { mime: string; base64: string } {
   const match = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl);
   if (!match) return { mime: "image/jpeg", base64: dataUrl };
-  return { mime: match[1], base64: match[2] };
+  return { mime: match[1] ?? "image/jpeg", base64: match[2] ?? dataUrl };
 }
 
-async function callGeminiDirect(apiKey: string, body: Record<string, unknown>) {
+async function callGeminiDirect(apiKey: string, body: Record<string, unknown>): Promise<string> {
   const resp = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -58,10 +65,10 @@ async function callGeminiDirect(apiKey: string, body: Record<string, unknown>) {
   const json = (await resp.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
   };
-  return json.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
+  return json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
 }
 
-async function callGateway(apiKey: string, body: Record<string, unknown>) {
+async function callGatewayDirect(apiKey: string, body: Record<string, unknown>): Promise<string> {
   const resp = await fetch(GATEWAY, {
     method: "POST",
     headers: {
@@ -78,14 +85,10 @@ async function callGateway(apiKey: string, body: Record<string, unknown>) {
 }
 
 /**
- * 统一调用入口。
+ * 统一调用入口，返回模型输出的纯文本。
  * - 截图识别：传入 systemPrompt 与 multimodal user 内容（messages 格式）
- * 返回模型输出的纯文本。
  */
-export async function callAi(messages: {
-  role: "system" | "user";
-  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
-}[]) {
+export async function callAi(messages: AiMessage[]): Promise<string> {
   const cfg = resolveAiConfig();
   if (!cfg) {
     throw new Error(
@@ -94,12 +97,10 @@ export async function callAi(messages: {
   }
 
   if (cfg.mode === "gemini") {
-    // 转成 Google Gemini generateContent 格式
     const systemText = messages.find((m) => m.role === "system");
     const userMsg = messages.find((m) => m.role === "user");
-    const parts: { text: string } | { inline_data: { mime_type: string; data: string } }[] = [];
     const geminiParts: Array<{ text?: string } | { inline_data: { mime_type: string; data: string } }> = [];
-    if (Array.isArray(userMsg?.content)) {
+    if (userMsg && Array.isArray(userMsg.content)) {
       for (const part of userMsg.content) {
         if (part.type === "text" && part.text) geminiParts.push({ text: part.text });
         else if (part.type === "image_url" && part.image_url?.url) {
@@ -107,7 +108,7 @@ export async function callAi(messages: {
           geminiParts.push({ inline_data: { mime_type: mime, data: base64 } });
         }
       }
-    } else if (typeof userMsg?.content === "string") {
+    } else if (userMsg && typeof userMsg.content === "string") {
       geminiParts.push({ text: userMsg.content });
     }
     const body: Record<string, unknown> = {
@@ -115,21 +116,18 @@ export async function callAi(messages: {
       generationConfig: { temperature: 0.1 },
     };
     if (systemText && typeof systemText.content === "string") {
-      body.systemInstruction = systemText.content;
+      body["systemInstruction"] = systemText.content;
     }
     return await callGeminiDirect(cfg.key, body);
   }
 
   // Lovable gateway 走 OpenAI 兼容格式
-  return await callGateway(cfg.key, { messages });
+  return await callGatewayDirect(cfg.key, { messages });
 }
 
 /** 旧名兼容：截图导入仍以 callGateway 调用，转接至 callAi */
-export async function callGateway(body: Record<string, unknown>) {
-  const messages = (body.messages as {
-    role: "system" | "user";
-    content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
-  }[]) ?? [];
+export async function callGateway(body: Record<string, unknown>): Promise<string> {
+  const messages = (body["messages"] as AiMessage[] | undefined) ?? [];
   return await callAi(messages);
 }
 
