@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { shiftTime, isUpcoming } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
+import { ImportGeoReview } from "@/components/ImportGeoReview";
 
 export const Route = createFileRoute("/import")({
   head: () => ({
