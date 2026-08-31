@@ -180,6 +180,7 @@ function ImportPage() {
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
+  const [reviewIds, setReviewIds] = useState<string[]>([]);
   const { data: batches = [] } = useImportBatches();
 
   const parseFile = async (file: File) => {
