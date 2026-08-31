@@ -14,6 +14,7 @@ import { analyzeScreenshot, type ExtractedOrder } from "@/lib/ai.functions";
 import { fileToImageDataUrl } from "@/lib/image";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
+import { ImportGeoReview } from "@/components/ImportGeoReview";
 
 export const Route = createFileRoute("/screenshot-import")({
   head: () => ({
@@ -70,6 +71,7 @@ function ScreenshotImportPage() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reviewIds, setReviewIds] = useState<string[]>([]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
@@ -181,6 +183,7 @@ function ScreenshotImportPage() {
     );
     setSaving(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
+    setReviewIds((inserted ?? []).map((o) => o.id));
     if (!summary.configured) toast.error(summary.message ?? "未设定高德 API Key，地址未解析");
     else if (summary.message) toast.error(summary.message);
     else
@@ -222,6 +225,14 @@ function ScreenshotImportPage() {
         </div>
       }
     >
+      {reviewIds.length > 0 && (
+        <ImportGeoReview
+          orderIds={reviewIds}
+          title="今次汇入 — 逐张核对定位"
+          onClose={() => setReviewIds([])}
+        />
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <div className="space-y-3">
           <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-surface p-6 text-center transition-colors hover:border-primary/50">
