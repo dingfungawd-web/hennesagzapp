@@ -667,6 +667,19 @@ function OrdersPage() {
           if (delTarget) deleteOrder.mutate(delTarget.id);
         }}
       />
+
+      {fixTarget && (
+        <LocationFixDialog
+          orderId={fixTarget.id}
+          address={fixTarget.raw_address}
+          lat={fixTarget.latitude == null ? null : Number(fixTarget.latitude)}
+          lon={fixTarget.longitude == null ? null : Number(fixTarget.longitude)}
+          open={!!fixTarget}
+          onOpenChange={(v) => !v && setFixTarget(null)}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["orders"] })}
+        />
+      )}
+
     </AppShell>
   );
 }
