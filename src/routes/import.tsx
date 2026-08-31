@@ -330,12 +330,14 @@ function ImportPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["import_batches"] });
 
+    const targets = inserted.filter(isUpcoming);
     const summary = await autoGeocodeOrders(
-      inserted.filter(isUpcoming).map((o) => ({ id: o.id, address: o.raw_address })),
+      targets.map((o) => ({ id: o.id, address: o.raw_address })),
       (done, total) => setProgress(`地址解析中… ${done}/${total}`),
     );
     setProgress("");
     qc.invalidateQueries({ queryKey: ["orders"] });
+    setReviewIds(targets.map((o) => o.id));
     if (!summary.configured) toast.error("未设定高德 API Key，地址未解析");
     else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失败 ${summary.failed}` : ""}`);
   };
