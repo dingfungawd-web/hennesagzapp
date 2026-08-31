@@ -14,7 +14,7 @@ import { analyzeScreenshot, type ExtractedOrder } from "@/lib/ai.functions";
 import { fileToImageDataUrl } from "@/lib/image";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
-import { ImportGeoReview } from "@/components/ImportGeoReview";
+import { ImportGeoReview, loadPendingReviewOrderIds } from "@/components/ImportGeoReview";
 
 export const Route = createFileRoute("/screenshot-import")({
   head: () => ({
