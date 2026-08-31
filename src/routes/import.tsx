@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { shiftTime, isUpcoming } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
+import { ImportGeoReview } from "@/components/ImportGeoReview";
 
 export const Route = createFileRoute("/import")({
   head: () => ({
@@ -179,6 +180,7 @@ function ImportPage() {
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
+  const [reviewIds, setReviewIds] = useState<string[]>([]);
   const { data: batches = [] } = useImportBatches();
 
   const parseFile = async (file: File) => {
@@ -328,12 +330,14 @@ function ImportPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["import_batches"] });
 
+    const targets = inserted.filter(isUpcoming);
     const summary = await autoGeocodeOrders(
-      inserted.filter(isUpcoming).map((o) => ({ id: o.id, address: o.raw_address })),
+      targets.map((o) => ({ id: o.id, address: o.raw_address })),
       (done, total) => setProgress(`地址解析中… ${done}/${total}`),
     );
     setProgress("");
     qc.invalidateQueries({ queryKey: ["orders"] });
+    setReviewIds(targets.map((o) => o.id));
     if (!summary.configured) toast.error("未设定高德 API Key，地址未解析");
     else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失败 ${summary.failed}` : ""}`);
   };
@@ -405,6 +409,14 @@ function ImportPage() {
           }}
         />
       </label>
+
+      {reviewIds.length > 0 && (
+        <ImportGeoReview
+          orderIds={reviewIds}
+          title="今次汇入 — 逐张核对定位"
+          onClose={() => setReviewIds([])}
+        />
+      )}
 
       {rows.length > 0 && (
         <div className="mb-6 overflow-auto rounded-lg border border-border bg-card">
