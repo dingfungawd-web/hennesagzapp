@@ -214,6 +214,17 @@ function ScreenshotImportPage() {
       subtitle={`批量上载截图（支援 HEIC），AI 自动抽取栏位 · 共 ${items.length} 张`}
       actions={
         <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              const ids = await loadPendingReviewOrderIds();
+              if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
+              setReviewIds(ids);
+            }}
+          >
+            核对定位
+          </Button>
           <Button size="sm" variant="outline" onClick={analyzeAll} disabled={running || !pendingCount}>
             <Sparkles className="size-4" />
             {running ? "辨识中…" : `全部辨识${pendingCount ? ` (${pendingCount})` : ""}`}
