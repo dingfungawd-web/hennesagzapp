@@ -46,6 +46,8 @@ import {
 import { TimeRangeSelect } from "@/components/TimeRangeSelect";
 import { geocodeAddresses } from "@/lib/amap.functions";
 import { autoGeocodeOrders } from "@/lib/geocode";
+import { LocationPreview } from "@/components/LocationPreview";
+import { LocationFixDialog } from "@/components/LocationFixDialog";
 
 import { cn } from "@/lib/utils";
 
@@ -105,6 +107,7 @@ function OrdersPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [delTarget, setDelTarget] = useState<Order | null>(null);
+  const [fixTarget, setFixTarget] = useState<Order | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   
@@ -250,6 +253,7 @@ function OrdersPage() {
             <SelectItem value="all">全部定位</SelectItem>
             <SelectItem value="failed">解析失败</SelectItem>
             <SelectItem value="pending">待解析</SelectItem>
+            <SelectItem value="review">定位存疑</SelectItem>
             <SelectItem value="confirmed">已定位</SelectItem>
           </SelectContent>
         </Select>
@@ -395,6 +399,21 @@ function OrdersPage() {
                   </div>
 
                   <div className="space-y-3">
+                    <div className="space-y-2">
+                      <LocationPreview
+                        lat={o.latitude == null ? null : Number(o.latitude)}
+                        lon={o.longitude == null ? null : Number(o.longitude)}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setFixTarget(o)}
+                      >
+                        <MapPin className="size-4" />
+                        核对／修正定位
+                      </Button>
+                    </div>
                     <AddressEditor order={o} onDone={() => qc.invalidateQueries({ queryKey: ["orders"] })} />
                     <div className="space-y-3">
 
@@ -648,6 +667,19 @@ function OrdersPage() {
           if (delTarget) deleteOrder.mutate(delTarget.id);
         }}
       />
+
+      {fixTarget && (
+        <LocationFixDialog
+          orderId={fixTarget.id}
+          address={fixTarget.raw_address}
+          lat={fixTarget.latitude == null ? null : Number(fixTarget.latitude)}
+          lon={fixTarget.longitude == null ? null : Number(fixTarget.longitude)}
+          open={!!fixTarget}
+          onOpenChange={(v) => !v && setFixTarget(null)}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["orders"] })}
+        />
+      )}
+
     </AppShell>
   );
 }

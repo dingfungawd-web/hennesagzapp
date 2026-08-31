@@ -42,7 +42,7 @@ export async function autoGeocodeOrders(
             latitude: r.lat,
             longitude: r.lon,
             normalized_address: r.formatted ?? null,
-            geo_status: "confirmed",
+            geo_status: r.suspect ? "review" : "confirmed",
           })
           .eq("id", r.id);
       } else {
