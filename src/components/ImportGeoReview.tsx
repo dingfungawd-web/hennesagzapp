@@ -221,3 +221,14 @@ function ReviewCard({
     </div>
   );
 }
+
+/** 取得所有仍需核对定位的订单 ID（未定位／存疑／失败） */
+export async function loadPendingReviewOrderIds(limit = 300) {
+  const { data } = await supabase
+    .from("orders")
+    .select("id")
+    .neq("geo_status", "confirmed")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((r) => r.id as string);
+}
