@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { shiftTime, isUpcoming } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
-import { ImportGeoReview } from "@/components/ImportGeoReview";
+import { ImportGeoReview, loadPendingReviewOrderIds } from "@/components/ImportGeoReview";
 
 export const Route = createFileRoute("/import")({
   head: () => ({
@@ -359,6 +359,17 @@ function ImportPage() {
       subtitle="批次上载订单表格"
       actions={
         <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const ids = await loadPendingReviewOrderIds();
+              if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
+              setReviewIds(ids);
+            }}
+          >
+            核对定位
+          </Button>
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <Download className="size-4" />
             下载范本
