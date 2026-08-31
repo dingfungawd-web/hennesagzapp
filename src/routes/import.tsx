@@ -410,6 +410,14 @@ function ImportPage() {
         />
       </label>
 
+      {reviewIds.length > 0 && (
+        <ImportGeoReview
+          orderIds={reviewIds}
+          title="今次汇入 — 逐张核对定位"
+          onClose={() => setReviewIds([])}
+        />
+      )}
+
       {rows.length > 0 && (
         <div className="mb-6 overflow-auto rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
