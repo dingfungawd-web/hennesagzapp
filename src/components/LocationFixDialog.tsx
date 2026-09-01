@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 import { Crosshair, MapPin, Search } from "lucide-react";
 import {
@@ -11,8 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { loadAmap } from "@/lib/amap-loader";
-import { getGeocodeCandidates, reverseGeocodePoint } from "@/lib/amap.functions";
+import { getGeocodeCandidates, getStaticMap, reverseGeocodePoint } from "@/lib/amap.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 type Candidate = {
@@ -35,6 +34,24 @@ type Props = {
   onSaved?: () => void;
 };
 
+const MAP_ZOOM = 16;
+
+function movePointByPixels(
+  point: { lat: number; lon: number },
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+) {
+  const worldSize = 256 * 2 ** zoom;
+  const x = ((point.lon + 180) / 360) * worldSize + offsetX;
+  const sinLat = Math.sin((point.lat * Math.PI) / 180);
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize + offsetY;
+  const lon = (x / worldSize) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / worldSize;
+  const nextLat = (180 / Math.PI) * Math.atan(Math.sinh(n));
+  return { lat: nextLat, lon };
+}
+
 export function LocationFixDialog({
   orderId,
   address,
@@ -44,9 +61,7 @@ export function LocationFixDialog({
   onOpenChange,
   onSaved,
 }: Props) {
-  const mapEl = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const mapImageRef = useRef<HTMLImageElement | null>(null);
   const [point, setPoint] = useState<{ lat: number; lon: number } | null>(
     lat != null && lon != null ? { lat: Number(lat), lon: Number(lon) } : null,
   );
@@ -55,44 +70,42 @@ export function LocationFixDialog({
   const [loadingCand, setLoadingCand] = useState(false);
   const [keyword, setKeyword] = useState(address);
   const [saving, setSaving] = useState(false);
+  const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
 
-  // 载入地图
+  // 使用 Web 服务静态地图，避免 Web 端 Key 的域名白名单令修正地图变成空白。
   useEffect(() => {
-    if (!open) return;
+    if (!open || !point) return;
     let cancelled = false;
+    setMapLoading(true);
+    setMapFailed(false);
     (async () => {
-      const AMapAny = await loadAmap();
-      if (cancelled || !AMapAny || !mapEl.current) return;
-      const AMap = AMapAny as any;
-      const center = point ? [point.lon, point.lat] : [113.264, 23.129];
-      const map = new AMap.Map(mapEl.current, {
-        zoom: point ? 16 : 11,
-        center,
-        mapStyle: "amap://styles/dark",
-      });
-      mapRef.current = map;
-      const marker = new AMap.Marker({ position: center, draggable: true, cursor: "move" });
-      map.add(marker);
-      markerRef.current = marker;
-      marker.on("dragend", (e: any) => {
-        const p = e.lnglat;
-        setPoint({ lat: p.getLat(), lon: p.getLng() });
-      });
-      map.on("click", (e: any) => {
-        const p = e.lnglat;
-        marker.setPosition([p.getLng(), p.getLat()]);
-        setPoint({ lat: p.getLat(), lon: p.getLng() });
-      });
-      setTimeout(() => map.resize?.(), 200);
+      try {
+        const result = await getStaticMap({
+          data: { lat: point.lat, lon: point.lon, zoom: MAP_ZOOM },
+        });
+        if (cancelled) return;
+        setMapUrl(result.url);
+        setMapFailed(!result.url);
+      } catch {
+        if (!cancelled) {
+          setMapUrl(null);
+          setMapFailed(true);
+        }
+      } finally {
+        if (!cancelled) setMapLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
-      mapRef.current?.destroy?.();
-      mapRef.current = null;
-      markerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, point]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPoint(lat != null && lon != null ? { lat: Number(lat), lon: Number(lon) } : null);
+  }, [open, lat, lon]);
 
   // 反查地址核对
   useEffect(() => {
@@ -130,15 +143,20 @@ export function LocationFixDialog({
       setKeyword(address);
       void search(address);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, address]);
 
   const pick = (c: Candidate) => {
     setPoint({ lat: c.lat, lon: c.lon });
-    if (mapRef.current && markerRef.current) {
-      markerRef.current.setPosition([c.lon, c.lat]);
-      mapRef.current.setZoomAndCenter(16, [c.lon, c.lat]);
-    }
+  };
+
+  const pickOnMap = (event: MouseEvent<HTMLImageElement>) => {
+    if (!point || !mapImageRef.current) return;
+    const rect = mapImageRef.current.getBoundingClientRect();
+    const sourceWidth = mapImageRef.current.naturalWidth || 960;
+    const sourceHeight = mapImageRef.current.naturalHeight || 560;
+    const offsetX = ((event.clientX - rect.left) / rect.width - 0.5) * sourceWidth;
+    const offsetY = ((event.clientY - rect.top) / rect.height - 0.5) * sourceHeight;
+    setPoint(movePointByPixels(point, offsetX, offsetY, MAP_ZOOM));
   };
 
   const save = async () => {
@@ -191,14 +209,30 @@ export function LocationFixDialog({
         </div>
 
         <div className="grid gap-3 md:grid-cols-[1fr_260px]">
-          <div className="h-[360px] w-full overflow-hidden rounded-lg border border-border">
-            <div ref={mapEl} style={{ width: "100%", height: "100%" }} />
+          <div className="flex aspect-[12/7] w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-surface">
+            {mapUrl ? (
+              <img
+                ref={mapImageRef}
+                src={mapUrl}
+                alt="可点击修正的订单定位地图"
+                className="h-full w-full cursor-crosshair object-fill"
+                onClick={pickOnMap}
+              />
+            ) : (
+              <p className="px-4 text-center text-xs text-muted-foreground">
+                {mapLoading
+                  ? "地图载入中…"
+                  : mapFailed
+                    ? "地图暂时无法载入，请先选择右方候选地点"
+                    : "请先选择一个候选地点"}
+              </p>
+            )}
           </div>
           <div className="max-h-[360px] space-y-1.5 overflow-auto pr-1">
             {candidates.length === 0 && (
-              <p className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {loadingCand ? "搜寻中…" : "冇候选结果，可直接喺地图撳低正确位置。"}
-              </p>
+              </div>
             )}
             {candidates.map((c, i) => (
               <button

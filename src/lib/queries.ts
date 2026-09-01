@@ -47,7 +47,7 @@ export function useImportBatches() {
         .from("import_batches")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(100);
       if (error) throw error;
       return data ?? [];
     },
@@ -77,9 +77,7 @@ export function useUpdateOrder() {
       // 任何触及「期」相关栏位嘅更新都视为需要同步去 app：标记待同步并重置已入 app
       const isScheduleAction =
         "install_date" in patch || "install_time" in patch || "team_id" in patch;
-      const update = isScheduleAction
-        ? { ...patch, app_sync_pending: true, in_app: false }
-        : patch;
+      const update = isScheduleAction ? { ...patch, app_sync_pending: true, in_app: false } : patch;
       const { error } = await supabase.from("orders").update(update).eq("id", id);
       if (error) throw error;
     },
