@@ -21,6 +21,7 @@ export type Database = {
           failed_count: number
           file_name: string | null
           id: string
+          source: string
           status: string
           success_count: number
           total_count: number
@@ -31,6 +32,7 @@ export type Database = {
           failed_count?: number
           file_name?: string | null
           id?: string
+          source?: string
           status?: string
           success_count?: number
           total_count?: number
@@ -41,6 +43,7 @@ export type Database = {
           failed_count?: number
           file_name?: string | null
           id?: string
+          source?: string
           status?: string
           success_count?: number
           total_count?: number
@@ -252,6 +255,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_import_batch: { Args: { _batch_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
