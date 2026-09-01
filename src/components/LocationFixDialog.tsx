@@ -143,7 +143,6 @@ export function LocationFixDialog({
       setKeyword(address);
       void search(address);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, address]);
 
   const pick = (c: Candidate) => {
