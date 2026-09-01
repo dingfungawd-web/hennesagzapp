@@ -363,9 +363,13 @@ function ImportPage() {
             variant="outline"
             size="sm"
             onClick={async () => {
-              const ids = await loadPendingReviewOrderIds();
-              if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
-              setReviewIds(ids);
+              try {
+                const ids = await loadPendingReviewOrderIds();
+                if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
+                setReviewIds(ids);
+              } catch (error) {
+                toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
+              }
             }}
           >
             核对定位
@@ -381,6 +385,14 @@ function ImportPage() {
         </>
       }
     >
+      {reviewIds.length > 0 && (
+        <ImportGeoReview
+          orderIds={reviewIds}
+          title="逐张核对定位"
+          onClose={() => setReviewIds([])}
+        />
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
         <span className="text-sm font-medium">今次汇入嘅单类型</span>
         <div className="flex gap-2">
@@ -420,14 +432,6 @@ function ImportPage() {
           }}
         />
       </label>
-
-      {reviewIds.length > 0 && (
-        <ImportGeoReview
-          orderIds={reviewIds}
-          title="今次汇入 — 逐张核对定位"
-          onClose={() => setReviewIds([])}
-        />
-      )}
 
       {rows.length > 0 && (
         <div className="mb-6 overflow-auto rounded-lg border border-border bg-card">
