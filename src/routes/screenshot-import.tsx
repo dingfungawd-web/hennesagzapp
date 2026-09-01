@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, Save, Sparkles, Trash2, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Camera, Save, Sparkles, Trash2, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,9 @@ import { analyzeScreenshot, type ExtractedOrder } from "@/lib/ai.functions";
 import { fileToImageDataUrl } from "@/lib/image";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
-import { ImportGeoReview, loadPendingReviewOrderIds } from "@/components/ImportGeoReview";
+import { ImportGeoReview } from "@/components/ImportGeoReview";
+import { CancelImportDialog } from "@/components/CancelImportDialog";
+import { useCancelImportBatch, useImportBatches } from "@/lib/queries";
 
 export const Route = createFileRoute("/screenshot-import")({
   head: () => ({
@@ -71,7 +73,12 @@ function ScreenshotImportPage() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [reviewIds, setReviewIds] = useState<string[]>([]);
+  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  const [cancelBatchId, setCancelBatchId] = useState<string | null>(null);
+  const { data: allBatches = [] } = useImportBatches();
+  const cancelBatch = useCancelImportBatch();
+  const batches = allBatches.filter((batch) => batch.source === "screenshot");
+  const cancelTarget = batches.find((batch) => batch.id === cancelBatchId) ?? null;
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
@@ -152,6 +159,22 @@ function ScreenshotImportPage() {
       return;
     }
     setSaving(true);
+    const { data: batch, error: batchError } = await supabase
+      .from("import_batches")
+      .insert({
+        batch_id: crypto.randomUUID(),
+        file_name: `截图汇入 ${new Date().toLocaleString("zh-CN")}`,
+        total_count: targets.length,
+        status: "processing",
+        source: "screenshot",
+      })
+      .select()
+      .single();
+    if (batchError || !batch) {
+      setSaving(false);
+      toast.error("建立截图汇入批次失败");
+      return;
+    }
     const { data: inserted, error } = await supabase
       .from("orders")
       .insert(
@@ -164,10 +187,12 @@ function ScreenshotImportPage() {
           raw_address: i.order.rawAddress,
           order_content: i.order.orderContent || null,
           notes: i.order.notes || null,
+          import_batch_id: batch.id,
         })),
       )
       .select("id, raw_address");
     if (error) {
+      await supabase.from("import_batches").delete().eq("id", batch.id);
       setSaving(false);
       toast.error("储存失败：" + error.message);
       return;
@@ -176,14 +201,19 @@ function ScreenshotImportPage() {
       prev.map((i) => (targets.some((t) => t.id === i.id) ? { ...i, status: "saved" } : i)),
     );
     toast.success(`已建立 ${targets.length} 张订单，正在自动解析地址…`);
+    await supabase
+      .from("import_batches")
+      .update({ status: "completed", success_count: inserted?.length ?? 0 })
+      .eq("id", batch.id);
     qc.invalidateQueries({ queryKey: ["orders"] });
+    qc.invalidateQueries({ queryKey: ["import_batches"] });
 
     const summary = await autoGeocodeOrders(
       (inserted ?? []).map((o) => ({ id: o.id, address: o.raw_address })),
     );
     setSaving(false);
     qc.invalidateQueries({ queryKey: ["orders"] });
-    setReviewIds((inserted ?? []).map((o) => o.id));
+    setActiveBatchId(batch.id);
     if (!summary.configured) toast.error(summary.message ?? "未设定高德 API Key，地址未解析");
     else if (summary.message) toast.error(summary.message);
     else
@@ -214,19 +244,11 @@ function ScreenshotImportPage() {
       subtitle={`批量上载截图（支援 HEIC），AI 自动抽取栏位 · 共 ${items.length} 张`}
       actions={
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              try {
-                const ids = await loadPendingReviewOrderIds();
-                if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
-                setReviewIds(ids);
-              } catch (error) {
-                toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
-              }
-            }}
-          >
+          <Button size="sm" variant="outline" onClick={() => {
+            const latest = batches[0];
+            if (!latest) toast.success("截图汇入未有待核对批次");
+            else setActiveBatchId(latest.id);
+          }}>
             核对定位
           </Button>
           <Button size="sm" variant="outline" onClick={analyzeAll} disabled={running || !pendingCount}>
@@ -240,12 +262,34 @@ function ScreenshotImportPage() {
         </div>
       }
     >
-      {reviewIds.length > 0 && (
+      {activeBatchId && (
         <ImportGeoReview
-          orderIds={reviewIds}
-            title="逐张核对定位"
-          onClose={() => setReviewIds([])}
+          batchId={activeBatchId}
+          title={`截图逐张核对定位 · ${batches.find((batch) => batch.id === activeBatchId)?.file_name ?? "汇入批次"}`}
+          onClose={() => setActiveBatchId(null)}
         />
+      )}
+
+      {batches.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-card p-4">
+          <p className="mb-3 font-display text-sm font-semibold">待核对截图汇入</p>
+          <div className="space-y-2">
+            {batches.map((batch) => (
+              <div key={batch.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface px-3 py-2 text-sm">
+                <span className="min-w-0 truncate">{batch.file_name}</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{batch.success_count}/{batch.total_count} 张</Badge>
+                  <Button size="sm" variant="outline" onClick={() => setActiveBatchId(batch.id)}>
+                    <MapPin className="size-3.5" />继续核对
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => setCancelBatchId(batch.id)}>
+                    <Trash2 className="size-3.5" />取消汇入
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -452,6 +496,23 @@ function ScreenshotImportPage() {
           </div>
         )}
       </div>
+      <CancelImportDialog
+        open={Boolean(cancelTarget)}
+        fileName={cancelTarget?.file_name ?? "截图汇入批次"}
+        onOpenChange={(open) => {
+          if (!open) setCancelBatchId(null);
+        }}
+        onConfirm={async () => {
+          if (!cancelTarget) return;
+          try {
+            await cancelBatch.mutateAsync(cancelTarget.id);
+            if (activeBatchId === cancelTarget.id) setActiveBatchId(null);
+            toast.success("已取消整批汇入");
+          } catch (error) {
+            toast.error(`取消汇入失败：${error instanceof Error ? error.message : String(error)}`);
+          }
+        }}
+      />
     </AppShell>
   );
 }

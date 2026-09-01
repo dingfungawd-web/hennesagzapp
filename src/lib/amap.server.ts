@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 const AMAP_BASE = "https://restapi.amap.com/v3";
 
 export type GeoResult = {
@@ -194,10 +196,8 @@ export async function staticMapDataUrl(
   if (!resp.ok) return null;
   const type = resp.headers.get("content-type") ?? "";
   if (!type.startsWith("image/")) return null;
-  const buf = new Uint8Array(await resp.arrayBuffer());
-  let binary = "";
-  for (let i = 0; i < buf.length; i += 1) binary += String.fromCharCode(buf[i] as number);
-  return `data:${type};base64,${btoa(binary)}`;
+  const buf = await resp.arrayBuffer();
+  return `data:${type};base64,${Buffer.from(buf).toString("base64")}`;
 }
 
 /** 逆地理编码：由座标取返地址，用嚟核对人手拖拉后嘅位置 */

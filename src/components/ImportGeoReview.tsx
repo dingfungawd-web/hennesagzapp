@@ -30,11 +30,11 @@ const STATUS_META: Record<string, { label: string; variant: "secondary" | "destr
 
 /** 匯入后逐张核对定位：预览缩图 + 修正地址 / 修正定位 */
 export function ImportGeoReview({
-  orderIds,
+  batchId,
   onClose,
   title = "逐张核对定位",
 }: {
-  orderIds: string[];
+  batchId: string;
   onClose?: () => void;
   title?: string;
 }) {
@@ -44,31 +44,24 @@ export function ImportGeoReview({
   const [fixId, setFixId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (orderIds.length === 0) {
-      setRows([]);
-      return;
-    }
     setLoading(true);
     try {
-      const all: OrderRow[] = [];
-      for (let i = 0; i < orderIds.length; i += 200) {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            "id, customer_name, customer_phone, raw_address, normalized_address, latitude, longitude, geo_status",
-          )
-          .in("id", orderIds.slice(i, i + 200));
-        if (error) throw error;
-        all.push(...((data ?? []) as OrderRow[]));
-      }
-      setRows(all);
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          "id, customer_name, customer_phone, raw_address, normalized_address, latitude, longitude, geo_status",
+        )
+        .eq("import_batch_id", batchId)
+        .order("created_at");
+      if (error) throw error;
+      setRows((data ?? []) as OrderRow[]);
     } catch (error) {
       setRows([]);
       toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
-  }, [orderIds]);
+  }, [batchId]);
 
   useEffect(() => {
     void load();
@@ -264,14 +257,15 @@ function ReviewCard({
   );
 }
 
-/** 取得所有仍需核对定位的订单 ID（未定位／存疑／失败） */
-export async function loadPendingReviewOrderIds(limit = 300) {
+/** 取得指定汇入来源最新一批仍有订单的批次。 */
+export async function loadLatestImportBatchId(source: "excel" | "screenshot") {
   const { data, error } = await supabase
-    .from("orders")
+    .from("import_batches")
     .select("id")
-    .neq("geo_status", "confirmed")
+    .eq("source", source)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(1)
+    .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => r.id as string);
+  return data?.id ?? null;
 }

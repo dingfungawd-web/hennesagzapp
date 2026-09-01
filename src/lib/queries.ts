@@ -54,6 +54,22 @@ export function useImportBatches() {
   });
 }
 
+export function useCancelImportBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const { error } = await supabase.rpc("cancel_import_batch", { _batch_id: batchId });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["orders"] }),
+        qc.invalidateQueries({ queryKey: ["import_batches"] }),
+      ]);
+    },
+  });
+}
+
 export function useUpdateOrder() {
   const qc = useQueryClient();
   return useMutation({
