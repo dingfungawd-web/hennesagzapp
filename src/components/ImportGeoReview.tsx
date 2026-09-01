@@ -22,8 +22,8 @@ type OrderRow = {
 };
 
 const STATUS_META: Record<string, { label: string; variant: "secondary" | "destructive" | "outline" }> = {
-  confirmed: { label: "已定位", variant: "secondary" },
-  review: { label: "定位存疑", variant: "destructive" },
+  confirmed: { label: "已核对", variant: "secondary" },
+  review: { label: "待核对", variant: "destructive" },
   failed: { label: "解析失败", variant: "destructive" },
   pending: { label: "待解析", variant: "outline" },
 };
@@ -73,6 +73,11 @@ export function ImportGeoReview({
   );
   const shown = onlyProblem ? problem : rows;
   const fixTarget = rows.find((r) => r.id === fixId) ?? null;
+
+  const confirmOne = async (id: string) => {
+    await supabase.from("orders").update({ geo_status: "confirmed" }).eq("id", id);
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, geo_status: "confirmed" } : r)));
+  };
 
   return (
     <div className="mb-6 rounded-lg border border-border bg-card p-4">
