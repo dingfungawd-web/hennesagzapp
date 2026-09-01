@@ -212,7 +212,7 @@ function ReviewCard({
           {row.geo_status === "review" && (
             <span className="flex items-center gap-1 text-[11px] text-destructive">
               <AlertTriangle className="size-3" />
-              区县可能唔一致
+              需人手核对
             </span>
           )}
         </div>
@@ -221,13 +221,21 @@ function ReviewCard({
           地图实际位置：{row.normalized_address ?? "—"}
         </p>
         <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={onConfirm}
+            disabled={row.geo_status === "confirmed" || row.latitude == null}
+          >
+            <CheckCircle2 className="size-4" />
+            {row.geo_status === "confirmed" ? "已核对" : "定位正确，确认"}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => void reparse()} disabled={busy}>
             <RefreshCw className={cn("size-4", busy && "animate-spin")} />
             储存并重新解析
           </Button>
-          <Button size="sm" onClick={onFix}>
+          <Button size="sm" variant="outline" onClick={onFix}>
             <MapPin className="size-4" />
-            核对／修正定位
+            修正定位
           </Button>
         </div>
       </div>
