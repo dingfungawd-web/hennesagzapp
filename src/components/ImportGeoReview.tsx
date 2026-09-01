@@ -177,10 +177,10 @@ function ReviewCard({
             latitude: r.lat,
             longitude: r.lon,
             normalized_address: r.formatted ?? null,
-            geo_status: r.suspect ? "review" : "confirmed",
+            geo_status: "review",
           })
           .eq("id", row.id);
-        toast.success(r.suspect ? "已解析，但区县可能唔一致，请核对" : "已重新解析定位");
+        toast.success("已重新解析，请核对缩图后确认");
       } else {
         await supabase.from("orders").update({ geo_status: "failed" }).eq("id", row.id);
         toast.error("解析失败，请手动修正定位");
