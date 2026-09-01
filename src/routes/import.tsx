@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileSpreadsheet, Download, Save } from "lucide-react";
+import { FileSpreadsheet, Download, Save, MapPin, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
 import { shiftTime } from "@/lib/domain";
-import { useImportBatches } from "@/lib/queries";
-import { ImportGeoReview, loadPendingReviewOrderIds } from "@/components/ImportGeoReview";
+import { useCancelImportBatch, useImportBatches } from "@/lib/queries";
+import { ImportGeoReview } from "@/components/ImportGeoReview";
+import { CancelImportDialog } from "@/components/CancelImportDialog";
 
 export const Route = createFileRoute("/import")({
   head: () => ({
@@ -180,8 +181,16 @@ function ImportPage() {
   const [fileName, setFileName] = useState("");
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
-  const [reviewIds, setReviewIds] = useState<string[]>([]);
-  const { data: batches = [] } = useImportBatches();
+  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  const [cancelBatchId, setCancelBatchId] = useState<string | null>(null);
+  const { data: allBatches = [] } = useImportBatches();
+  const cancelBatch = useCancelImportBatch();
+  const batches = allBatches.filter((batch) => batch.source === "excel");
+  const cancelTarget = batches.find((batch) => batch.id === cancelBatchId) ?? null;
+
+  useEffect(() => {
+    if (!activeBatchId && batches[0]) setActiveBatchId(batches[0].id);
+  }, [activeBatchId, batches]);
 
   const parseFile = async (file: File) => {
     const buf = await file.arrayBuffer();
@@ -282,6 +291,7 @@ function ImportPage() {
         file_name: fileName,
         total_count: finalRows.length,
         status: "processing",
+        source: "excel",
       })
       .select()
       .single();
@@ -338,7 +348,7 @@ function ImportPage() {
     );
     setProgress("");
     qc.invalidateQueries({ queryKey: ["orders"] });
-    setReviewIds(targets.map((o) => o.id));
+    setActiveBatchId(batch.id);
     if (!summary.configured) toast.error("未设定高德 API Key，地址未解析");
     else toast.success(`地址解析完成：成功 ${summary.ok}${summary.failed ? ` · 失败 ${summary.failed}` : ""}`);
   };
@@ -360,19 +370,11 @@ function ImportPage() {
       subtitle="批次上载订单表格"
       actions={
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                const ids = await loadPendingReviewOrderIds();
-                if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
-                setReviewIds(ids);
-              } catch (error) {
-                toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
-              }
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={() => {
+            const latest = batches[0];
+            if (!latest) toast.success("Excel 汇入未有待核对批次");
+            else setActiveBatchId(latest.id);
+          }}>
             核对定位
           </Button>
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
@@ -386,11 +388,11 @@ function ImportPage() {
         </>
       }
     >
-      {reviewIds.length > 0 && (
+      {activeBatchId && (
         <ImportGeoReview
-          orderIds={reviewIds}
-          title="逐张核对定位"
-          onClose={() => setReviewIds([])}
+          batchId={activeBatchId}
+          title={`Excel 逐张核对定位 · ${batches.find((batch) => batch.id === activeBatchId)?.file_name ?? "汇入批次"}`}
+          onClose={() => setActiveBatchId(null)}
         />
       )}
 
@@ -486,12 +488,37 @@ function ImportPage() {
               <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                 {b.success_count}/{b.total_count} 成功
                 <Badge variant="outline">{b.status}</Badge>
+                <Button size="sm" variant="outline" onClick={() => setActiveBatchId(b.id)}>
+                  <MapPin className="size-3.5" />
+                  继续核对
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => setCancelBatchId(b.id)}>
+                  <Trash2 className="size-3.5" />
+                  取消汇入
+                </Button>
               </span>
             </div>
           ))}
           {batches.length === 0 && <p className="text-xs text-muted-foreground">未有汇入纪录</p>}
         </div>
       </div>
+      <CancelImportDialog
+        open={Boolean(cancelTarget)}
+        fileName={cancelTarget?.file_name ?? "Excel 汇入批次"}
+        onOpenChange={(open) => {
+          if (!open) setCancelBatchId(null);
+        }}
+        onConfirm={async () => {
+          if (!cancelTarget) return;
+          try {
+            await cancelBatch.mutateAsync(cancelTarget.id);
+            if (activeBatchId === cancelTarget.id) setActiveBatchId(null);
+            toast.success("已取消整批汇入");
+          } catch (error) {
+            toast.error(`取消汇入失败：${error instanceof Error ? error.message : String(error)}`);
+          }
+        }}
+      />
     </AppShell>
   );
 }
