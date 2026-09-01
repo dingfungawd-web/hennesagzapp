@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 import { Crosshair, MapPin, Search } from "lucide-react";
 import {
@@ -150,7 +150,7 @@ export function LocationFixDialog({
     setPoint({ lat: c.lat, lon: c.lon });
   };
 
-  const pickOnMap = (event: React.MouseEvent<HTMLImageElement>) => {
+  const pickOnMap = (event: MouseEvent<HTMLImageElement>) => {
     if (!point || !mapImageRef.current) return;
     const rect = mapImageRef.current.getBoundingClientRect();
     const sourceWidth = mapImageRef.current.naturalWidth || 960;
