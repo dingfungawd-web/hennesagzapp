@@ -253,8 +253,8 @@ function OrdersPage() {
             <SelectItem value="all">全部定位</SelectItem>
             <SelectItem value="failed">解析失败</SelectItem>
             <SelectItem value="pending">待解析</SelectItem>
-            <SelectItem value="review">定位存疑</SelectItem>
-            <SelectItem value="confirmed">已定位</SelectItem>
+            <SelectItem value="review">待核对</SelectItem>
+            <SelectItem value="confirmed">已核对</SelectItem>
           </SelectContent>
         </Select>
 
@@ -530,10 +530,10 @@ function OrdersPage() {
                                 latitude: r.lat ?? null,
                                 longitude: r.lon ?? null,
                                 normalized_address: r.formatted ?? null,
-                                geo_status: "confirmed",
+                                geo_status: "review",
                               })
                               .eq("id", o.id);
-                            toast.success("已定位");
+                            toast.success("已解析，请核对定位后确认");
                           } else {
                             await supabase
                               .from("orders")
@@ -720,10 +720,10 @@ function AddressEditor({ order, onDone }: { order: Order; onDone: () => void }) 
             latitude: r.lat ?? null,
             longitude: r.lon ?? null,
             normalized_address: r.formatted ?? null,
-            geo_status: "confirmed",
+            geo_status: "review",
           })
           .eq("id", order.id);
-        toast.success("已成功定位", { id: toastId });
+        toast.success("已解析，请核对定位后确认", { id: toastId });
       } else {
         await supabase.from("orders").update({ geo_status: "failed" }).eq("id", order.id);
         toast.error("仍然解析唔到，请补充城市／区／小区／栋室", { id: toastId });

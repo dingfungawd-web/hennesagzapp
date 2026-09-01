@@ -22,8 +22,8 @@ type OrderRow = {
 };
 
 const STATUS_META: Record<string, { label: string; variant: "secondary" | "destructive" | "outline" }> = {
-  confirmed: { label: "已定位", variant: "secondary" },
-  review: { label: "定位存疑", variant: "destructive" },
+  confirmed: { label: "已核对", variant: "secondary" },
+  review: { label: "待核对", variant: "destructive" },
   failed: { label: "解析失败", variant: "destructive" },
   pending: { label: "待解析", variant: "outline" },
 };
@@ -74,6 +74,11 @@ export function ImportGeoReview({
   const shown = onlyProblem ? problem : rows;
   const fixTarget = rows.find((r) => r.id === fixId) ?? null;
 
+  const confirmOne = async (id: string) => {
+    await supabase.from("orders").update({ geo_status: "confirmed" }).eq("id", id);
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, geo_status: "confirmed" } : r)));
+  };
+
   return (
     <div className="mb-6 rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -103,7 +108,13 @@ export function ImportGeoReview({
 
       <div className="max-h-[70vh] space-y-3 overflow-auto pr-1">
         {shown.map((r) => (
-          <ReviewCard key={r.id} row={r} onFix={() => setFixId(r.id)} onChanged={load} />
+          <ReviewCard
+            key={r.id}
+            row={r}
+            onFix={() => setFixId(r.id)}
+            onChanged={load}
+            onConfirm={() => void confirmOne(r.id)}
+          />
         ))}
         {shown.length === 0 && (
           <p className="rounded border border-border bg-surface p-4 text-center text-xs text-muted-foreground">
@@ -133,10 +144,12 @@ function ReviewCard({
   row,
   onFix,
   onChanged,
+  onConfirm,
 }: {
   row: OrderRow;
   onFix: () => void;
   onChanged: () => void | Promise<void>;
+  onConfirm: () => void;
 }) {
   const [address, setAddress] = useState(row.raw_address);
   const [busy, setBusy] = useState(false);
@@ -164,10 +177,10 @@ function ReviewCard({
             latitude: r.lat,
             longitude: r.lon,
             normalized_address: r.formatted ?? null,
-            geo_status: r.suspect ? "review" : "confirmed",
+            geo_status: "review",
           })
           .eq("id", row.id);
-        toast.success(r.suspect ? "已解析，但区县可能唔一致，请核对" : "已重新解析定位");
+        toast.success("已重新解析，请核对缩图后确认");
       } else {
         await supabase.from("orders").update({ geo_status: "failed" }).eq("id", row.id);
         toast.error("解析失败，请手动修正定位");
@@ -199,7 +212,7 @@ function ReviewCard({
           {row.geo_status === "review" && (
             <span className="flex items-center gap-1 text-[11px] text-destructive">
               <AlertTriangle className="size-3" />
-              区县可能唔一致
+              需人手核对
             </span>
           )}
         </div>
@@ -208,13 +221,21 @@ function ReviewCard({
           地图实际位置：{row.normalized_address ?? "—"}
         </p>
         <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={onConfirm}
+            disabled={row.geo_status === "confirmed" || row.latitude == null}
+          >
+            <CheckCircle2 className="size-4" />
+            {row.geo_status === "confirmed" ? "已核对" : "定位正确，确认"}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => void reparse()} disabled={busy}>
             <RefreshCw className={cn("size-4", busy && "animate-spin")} />
             储存并重新解析
           </Button>
-          <Button size="sm" onClick={onFix}>
+          <Button size="sm" variant="outline" onClick={onFix}>
             <MapPin className="size-4" />
-            核对／修正定位
+            修正定位
           </Button>
         </div>
       </div>

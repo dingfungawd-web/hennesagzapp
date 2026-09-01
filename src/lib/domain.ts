@@ -44,8 +44,8 @@ export const STATUS_LABEL: Record<string, string> = {
 
 export const GEO_LABEL: Record<string, string> = {
   pending: "待解析",
-  confirmed: "已定位",
-  review: "定位存疑",
+  confirmed: "已核对",
+  review: "待核对",
   failed: "解析失败",
 };
 

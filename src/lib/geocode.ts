@@ -42,7 +42,8 @@ export async function autoGeocodeOrders(
             latitude: r.lat,
             longitude: r.lon,
             normalized_address: r.formatted ?? null,
-            geo_status: r.suspect ? "review" : "confirmed",
+            // 一律标记为「待核对」，必须人手确认先会变「已核对」
+            geo_status: "review",
           })
           .eq("id", r.id);
       } else {
