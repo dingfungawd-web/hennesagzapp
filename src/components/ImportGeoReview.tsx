@@ -144,10 +144,12 @@ function ReviewCard({
   row,
   onFix,
   onChanged,
+  onConfirm,
 }: {
   row: OrderRow;
   onFix: () => void;
   onChanged: () => void | Promise<void>;
+  onConfirm: () => void;
 }) {
   const [address, setAddress] = useState(row.raw_address);
   const [busy, setBusy] = useState(false);
