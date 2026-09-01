@@ -45,9 +45,7 @@ function movePointByPixels(
   const worldSize = 256 * 2 ** zoom;
   const x = ((point.lon + 180) / 360) * worldSize + offsetX;
   const sinLat = Math.sin((point.lat * Math.PI) / 180);
-  const y =
-    (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize +
-    offsetY;
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize + offsetY;
   const lon = (x / worldSize) * 360 - 180;
   const n = Math.PI - (2 * Math.PI * y) / worldSize;
   const nextLat = (180 / Math.PI) * Math.atan(Math.sinh(n));
@@ -84,7 +82,9 @@ export function LocationFixDialog({
     setMapFailed(false);
     (async () => {
       try {
-        const result = await getStaticMap({ data: { lat: point.lat, lon: point.lon, zoom: MAP_ZOOM } });
+        const result = await getStaticMap({
+          data: { lat: point.lat, lon: point.lon, zoom: MAP_ZOOM },
+        });
         if (cancelled) return;
         setMapUrl(result.url);
         setMapFailed(!result.url);
@@ -221,7 +221,11 @@ export function LocationFixDialog({
               />
             ) : (
               <p className="px-4 text-center text-xs text-muted-foreground">
-                {mapLoading ? "地图载入中…" : mapFailed ? "地图暂时无法载入，请先选择右方候选地点" : "请先选择一个候选地点"}
+                {mapLoading
+                  ? "地图载入中…"
+                  : mapFailed
+                    ? "地图暂时无法载入，请先选择右方候选地点"
+                    : "请先选择一个候选地点"}
               </p>
             )}
           </div>

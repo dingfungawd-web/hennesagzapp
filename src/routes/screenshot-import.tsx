@@ -2,7 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, Save, Sparkles, Trash2, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
+import {
+  Camera,
+  Save,
+  Sparkles,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  MapPin,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,12 +33,14 @@ export const Route = createFileRoute("/screenshot-import")({
       { title: "截图汇入 — 汉纱排程调度台" },
       {
         name: "description",
-        content: "批量上载订单截图（支援 iPhone HEIC），AI 自动辨识客户、地址与订单内容并建立订单。",
+        content:
+          "批量上载订单截图（支援 iPhone HEIC），AI 自动辨识客户、地址与订单内容并建立订单。",
       },
       { property: "og:title", content: "截图汇入 — 汉纱排程调度台" },
       {
         property: "og:description",
-        content: "批量上载订单截图（支援 iPhone HEIC），AI 自动辨识客户、地址与订单内容并建立订单。",
+        content:
+          "批量上载订单截图（支援 iPhone HEIC），AI 自动辨识客户、地址与订单内容并建立订单。",
       },
     ],
   }),
@@ -149,7 +160,6 @@ function ScreenshotImportPage() {
     await runQueue(targets);
   };
 
-
   const saveAll = async () => {
     const targets = items.filter(
       (i) => i.status === "done" && i.order.customerName && i.order.rawAddress,
@@ -222,7 +232,6 @@ function ScreenshotImportPage() {
       );
   };
 
-
   const updateOrder = (id: string, next: Partial<ExtractedOrder>) =>
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, order: { ...i.order, ...next } } : i)),
@@ -244,21 +253,35 @@ function ScreenshotImportPage() {
       subtitle={`批量上载截图（支援 HEIC），AI 自动抽取栏位 · 共 ${items.length} 张`}
       actions={
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => {
-            const latest = batches[0];
-            if (latest) {
-              setActiveBatchId(latest.id);
-              return;
-            }
-            if (readyCount > 0) {
-              void saveAll();
-              return;
-            }
-            toast.info(items.length > 0 ? "请先完成截图辨识，系统会建立订单并打开定位核对" : "请先上载并辨识截图");
-          }} disabled={saving || running}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const latest = batches[0];
+              if (latest) {
+                setActiveBatchId(latest.id);
+                return;
+              }
+              if (readyCount > 0) {
+                void saveAll();
+                return;
+              }
+              toast.info(
+                items.length > 0
+                  ? "请先完成截图辨识，系统会建立订单并打开定位核对"
+                  : "请先上载并辨识截图",
+              );
+            }}
+            disabled={saving || running}
+          >
             核对定位
           </Button>
-          <Button size="sm" variant="outline" onClick={analyzeAll} disabled={running || !pendingCount}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={analyzeAll}
+            disabled={running || !pendingCount}
+          >
             <Sparkles className="size-4" />
             {running ? "辨识中…" : `全部辨识${pendingCount ? ` (${pendingCount})` : ""}`}
           </Button>
@@ -282,15 +305,26 @@ function ScreenshotImportPage() {
           <p className="mb-3 font-display text-sm font-semibold">待核对截图汇入</p>
           <div className="space-y-2">
             {batches.map((batch) => (
-              <div key={batch.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface px-3 py-2 text-sm">
+              <div
+                key={batch.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface px-3 py-2 text-sm"
+              >
                 <span className="min-w-0 truncate">{batch.file_name}</span>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{batch.success_count}/{batch.total_count} 张</Badge>
+                  <Badge variant="outline">
+                    {batch.success_count}/{batch.total_count} 张
+                  </Badge>
                   <Button size="sm" variant="outline" onClick={() => setActiveBatchId(batch.id)}>
-                    <MapPin className="size-3.5" />继续核对
+                    <MapPin className="size-3.5" />
+                    继续核对
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => setCancelBatchId(batch.id)}>
-                    <Trash2 className="size-3.5" />取消汇入
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setCancelBatchId(batch.id)}
+                  >
+                    <Trash2 className="size-3.5" />
+                    取消汇入
                   </Button>
                 </div>
               </div>
