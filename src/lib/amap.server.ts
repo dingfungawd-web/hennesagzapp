@@ -192,12 +192,16 @@ export async function staticMapDataUrl(
   size = "480*280",
 ) {
   const url = `https://restapi.amap.com/v3/staticmap?location=${lon},${lat}&zoom=${zoom}&size=${size}&scale=2&markers=mid,0xFF6B00,:${lon},${lat}&key=${apiKey}`;
-  const resp = await fetch(url);
-  if (!resp.ok) return null;
-  const type = resp.headers.get("content-type") ?? "";
-  if (!type.startsWith("image/")) return null;
-  const buf = await resp.arrayBuffer();
-  return `data:${type};base64,${Buffer.from(buf).toString("base64")}`;
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!resp.ok) return null;
+    const type = resp.headers.get("content-type") ?? "";
+    if (!type.startsWith("image/")) return null;
+    const buf = await resp.arrayBuffer();
+    return `data:${type};base64,${Buffer.from(buf).toString("base64")}`;
+  } catch {
+    return null;
+  }
 }
 
 /** 逆地理编码：由座标取返地址，用嚟核对人手拖拉后嘅位置 */
