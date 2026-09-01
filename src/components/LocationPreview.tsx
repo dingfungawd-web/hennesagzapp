@@ -4,6 +4,45 @@ import { getStaticMap } from "@/lib/amap.functions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
+const previewQueue: (() => void)[] = [];
+let activePreviewLoads = 0;
+const MAX_PREVIEW_LOADS = 2;
+
+function runNextPreview() {
+  while (activePreviewLoads < MAX_PREVIEW_LOADS) {
+    const next = previewQueue.shift();
+    if (!next) return;
+    activePreviewLoads += 1;
+    next();
+  }
+}
+
+function queueStaticMap(lat: number, lon: number) {
+  return new Promise<string | null>((resolve) => {
+    previewQueue.push(() => {
+      void (async () => {
+        try {
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            const result = await getStaticMap({ data: { lat, lon } });
+            if (result.url) {
+              resolve(result.url);
+              return;
+            }
+            await new Promise((wait) => window.setTimeout(wait, 600 * (attempt + 1)));
+          }
+          resolve(null);
+        } catch {
+          resolve(null);
+        } finally {
+          activePreviewLoads -= 1;
+          runNextPreview();
+        }
+      })();
+    });
+    runNextPreview();
+  });
+}
+
 /** 定位预览缩图：直接睇到高德解析咗去边度 */
 export function LocationPreview({
   lat,
@@ -25,9 +64,9 @@ export function LocationPreview({
     if (lat == null || lon == null) return;
     (async () => {
       try {
-        const res = await getStaticMap({ data: { lat: Number(lat), lon: Number(lon) } });
+        const mapUrl = await queueStaticMap(Number(lat), Number(lon));
         if (!cancelled) {
-          if (res.url) setUrl(res.url);
+          if (mapUrl) setUrl(mapUrl);
           else setFailed(true);
         }
       } catch {
