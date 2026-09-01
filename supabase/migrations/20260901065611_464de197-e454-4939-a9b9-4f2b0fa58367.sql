@@ -1,0 +1,2 @@
+ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_geo_status_check;
+ALTER TABLE public.orders ADD CONSTRAINT orders_geo_status_check CHECK (geo_status IN ('pending', 'review', 'confirmed', 'failed'));

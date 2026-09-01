@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
-import { shiftTime, isUpcoming } from "@/lib/domain";
+import { shiftTime } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
 import { ImportGeoReview, loadPendingReviewOrderIds } from "@/components/ImportGeoReview";
 
@@ -330,7 +330,8 @@ function ImportPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["import_batches"] });
 
-    const targets = inserted.filter(isUpcoming);
+    // 所有汇入订单都必须解析并逐张人工核对；过往日期只会在地图／智能配对隐藏。
+    const targets = inserted;
     const summary = await autoGeocodeOrders(
       targets.map((o) => ({ id: o.id, address: o.raw_address })),
       (done, total) => setProgress(`地址解析中… ${done}/${total}`),
@@ -363,9 +364,13 @@ function ImportPage() {
             variant="outline"
             size="sm"
             onClick={async () => {
-              const ids = await loadPendingReviewOrderIds();
-              if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
-              setReviewIds(ids);
+              try {
+                const ids = await loadPendingReviewOrderIds();
+                if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
+                setReviewIds(ids);
+              } catch (error) {
+                toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
+              }
             }}
           >
             核对定位
@@ -381,6 +386,14 @@ function ImportPage() {
         </>
       }
     >
+      {reviewIds.length > 0 && (
+        <ImportGeoReview
+          orderIds={reviewIds}
+          title="逐张核对定位"
+          onClose={() => setReviewIds([])}
+        />
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
         <span className="text-sm font-medium">今次汇入嘅单类型</span>
         <div className="flex gap-2">
@@ -420,14 +433,6 @@ function ImportPage() {
           }}
         />
       </label>
-
-      {reviewIds.length > 0 && (
-        <ImportGeoReview
-          orderIds={reviewIds}
-          title="今次汇入 — 逐张核对定位"
-          onClose={() => setReviewIds([])}
-        />
-      )}
 
       {rows.length > 0 && (
         <div className="mb-6 overflow-auto rounded-lg border border-border bg-card">

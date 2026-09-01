@@ -218,9 +218,13 @@ function ScreenshotImportPage() {
             size="sm"
             variant="outline"
             onClick={async () => {
-              const ids = await loadPendingReviewOrderIds();
-              if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
-              setReviewIds(ids);
+              try {
+                const ids = await loadPendingReviewOrderIds();
+                if (ids.length === 0) toast.success("冇订单需要核对定位 🎉");
+                setReviewIds(ids);
+              } catch (error) {
+                toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
+              }
             }}
           >
             核对定位
@@ -239,7 +243,7 @@ function ScreenshotImportPage() {
       {reviewIds.length > 0 && (
         <ImportGeoReview
           orderIds={reviewIds}
-          title="今次汇入 — 逐张核对定位"
+            title="逐张核对定位"
           onClose={() => setReviewIds([])}
         />
       )}

@@ -49,18 +49,25 @@ export function ImportGeoReview({
       return;
     }
     setLoading(true);
-    const all: OrderRow[] = [];
-    for (let i = 0; i < orderIds.length; i += 200) {
-      const { data } = await supabase
-        .from("orders")
-        .select(
-          "id, customer_name, customer_phone, raw_address, normalized_address, latitude, longitude, geo_status",
-        )
-        .in("id", orderIds.slice(i, i + 200));
-      all.push(...((data ?? []) as OrderRow[]));
+    try {
+      const all: OrderRow[] = [];
+      for (let i = 0; i < orderIds.length; i += 200) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            "id, customer_name, customer_phone, raw_address, normalized_address, latitude, longitude, geo_status",
+          )
+          .in("id", orderIds.slice(i, i + 200));
+        if (error) throw error;
+        all.push(...((data ?? []) as OrderRow[]));
+      }
+      setRows(all);
+    } catch (error) {
+      setRows([]);
+      toast.error(`载入定位核对清单失败：${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoading(false);
     }
-    setRows(all);
-    setLoading(false);
   }, [orderIds]);
 
   useEffect(() => {
@@ -75,8 +82,13 @@ export function ImportGeoReview({
   const fixTarget = rows.find((r) => r.id === fixId) ?? null;
 
   const confirmOne = async (id: string) => {
-    await supabase.from("orders").update({ geo_status: "confirmed" }).eq("id", id);
+    const { error } = await supabase.from("orders").update({ geo_status: "confirmed" }).eq("id", id);
+    if (error) {
+      toast.error(`确认定位失败：${error.message}`);
+      return;
+    }
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, geo_status: "confirmed" } : r)));
+    toast.success("已确认定位");
   };
 
   return (
@@ -162,8 +174,13 @@ function ReviewCard({
   const reparse = async () => {
     setBusy(true);
     try {
-      if (address.trim() !== row.raw_address)
-        await supabase.from("orders").update({ raw_address: address.trim() }).eq("id", row.id);
+      if (address.trim() !== row.raw_address) {
+        const { error } = await supabase
+          .from("orders")
+          .update({ raw_address: address.trim() })
+          .eq("id", row.id);
+        if (error) throw error;
+      }
       const res = await geocodeAddresses({ data: { items: [{ id: row.id, address: address.trim() }] } });
       if (!res.configured) {
         toast.error(res.message ?? "未设定高德 API Key");
@@ -171,7 +188,7 @@ function ReviewCard({
       }
       const r = res.results[0];
       if (r?.ok && typeof r.lat === "number" && typeof r.lon === "number") {
-        await supabase
+        const { error } = await supabase
           .from("orders")
           .update({
             latitude: r.lat,
@@ -180,12 +197,16 @@ function ReviewCard({
             geo_status: "review",
           })
           .eq("id", row.id);
+        if (error) throw error;
         toast.success("已重新解析，请核对缩图后确认");
       } else {
-        await supabase.from("orders").update({ geo_status: "failed" }).eq("id", row.id);
+        const { error } = await supabase.from("orders").update({ geo_status: "failed" }).eq("id", row.id);
+        if (error) throw error;
         toast.error("解析失败，请手动修正定位");
       }
       await onChanged();
+    } catch (error) {
+      toast.error(`储存解析结果失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setBusy(false);
     }
@@ -245,11 +266,12 @@ function ReviewCard({
 
 /** 取得所有仍需核对定位的订单 ID（未定位／存疑／失败） */
 export async function loadPendingReviewOrderIds(limit = 300) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .select("id")
     .neq("geo_status", "confirmed")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (error) throw new Error(error.message);
   return (data ?? []).map((r) => r.id as string);
 }

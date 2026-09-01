@@ -35,8 +35,7 @@ export async function autoGeocodeOrders(
 
     for (const r of res.results) {
       if (r.ok && typeof r.lat === "number" && typeof r.lon === "number") {
-        ok += 1;
-        await supabase
+        const { error } = await supabase
           .from("orders")
           .update({
             latitude: r.lat,
@@ -46,9 +45,15 @@ export async function autoGeocodeOrders(
             geo_status: "review",
           })
           .eq("id", r.id);
+        if (error) {
+          failed += 1;
+          continue;
+        }
+        ok += 1;
       } else {
+        const { error } = await supabase.from("orders").update({ geo_status: "failed" }).eq("id", r.id);
+        if (error) return { configured: true, ok, failed, message: `储存解析结果失败：${error.message}` };
         failed += 1;
-        await supabase.from("orders").update({ geo_status: "failed" }).eq("id", r.id);
       }
     }
     onProgress?.(Math.min(i + CHUNK, targets.length), targets.length);
