@@ -246,9 +246,16 @@ function ScreenshotImportPage() {
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => {
             const latest = batches[0];
-            if (!latest) toast.success("截图汇入未有待核对批次");
-            else setActiveBatchId(latest.id);
-          }}>
+            if (latest) {
+              setActiveBatchId(latest.id);
+              return;
+            }
+            if (readyCount > 0) {
+              void saveAll();
+              return;
+            }
+            toast.info(items.length > 0 ? "请先完成截图辨识，系统会建立订单并打开定位核对" : "请先上载并辨识截图");
+          }} disabled={saving || running}>
             核对定位
           </Button>
           <Button size="sm" variant="outline" onClick={analyzeAll} disabled={running || !pendingCount}>
@@ -257,7 +264,7 @@ function ScreenshotImportPage() {
           </Button>
           <Button size="sm" onClick={saveAll} disabled={saving || !readyCount}>
             <Save className="size-4" />
-            {saving ? "建立中…" : `建立订单${readyCount ? ` (${readyCount})` : ""}`}
+            {saving ? "建立中…" : `建立订单并核对${readyCount ? ` (${readyCount})` : ""}`}
           </Button>
         </div>
       }
