@@ -108,7 +108,13 @@ export function ImportGeoReview({
 
       <div className="max-h-[70vh] space-y-3 overflow-auto pr-1">
         {shown.map((r) => (
-          <ReviewCard key={r.id} row={r} onFix={() => setFixId(r.id)} onChanged={load} />
+          <ReviewCard
+            key={r.id}
+            row={r}
+            onFix={() => setFixId(r.id)}
+            onChanged={load}
+            onConfirm={() => void confirmOne(r.id)}
+          />
         ))}
         {shown.length === 0 && (
           <p className="rounded border border-border bg-surface p-4 text-center text-xs text-muted-foreground">
