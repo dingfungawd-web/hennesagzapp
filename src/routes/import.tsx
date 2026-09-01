@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { autoGeocodeOrders } from "@/lib/geocode";
-import { shiftTime, isUpcoming } from "@/lib/domain";
+import { shiftTime } from "@/lib/domain";
 import { useImportBatches } from "@/lib/queries";
 import { ImportGeoReview, loadPendingReviewOrderIds } from "@/components/ImportGeoReview";
 
@@ -330,7 +330,8 @@ function ImportPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["import_batches"] });
 
-    const targets = inserted.filter(isUpcoming);
+    // 所有汇入订单都必须解析并逐张人工核对；过往日期只会在地图／智能配对隐藏。
+    const targets = inserted;
     const summary = await autoGeocodeOrders(
       targets.map((o) => ({ id: o.id, address: o.raw_address })),
       (done, total) => setProgress(`地址解析中… ${done}/${total}`),

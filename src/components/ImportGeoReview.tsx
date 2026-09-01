@@ -174,8 +174,13 @@ function ReviewCard({
   const reparse = async () => {
     setBusy(true);
     try {
-      if (address.trim() !== row.raw_address)
-        await supabase.from("orders").update({ raw_address: address.trim() }).eq("id", row.id);
+      if (address.trim() !== row.raw_address) {
+        const { error } = await supabase
+          .from("orders")
+          .update({ raw_address: address.trim() })
+          .eq("id", row.id);
+        if (error) throw error;
+      }
       const res = await geocodeAddresses({ data: { items: [{ id: row.id, address: address.trim() }] } });
       if (!res.configured) {
         toast.error(res.message ?? "未设定高德 API Key");
@@ -183,7 +188,7 @@ function ReviewCard({
       }
       const r = res.results[0];
       if (r?.ok && typeof r.lat === "number" && typeof r.lon === "number") {
-        await supabase
+        const { error } = await supabase
           .from("orders")
           .update({
             latitude: r.lat,
@@ -192,12 +197,16 @@ function ReviewCard({
             geo_status: "review",
           })
           .eq("id", row.id);
+        if (error) throw error;
         toast.success("已重新解析，请核对缩图后确认");
       } else {
-        await supabase.from("orders").update({ geo_status: "failed" }).eq("id", row.id);
+        const { error } = await supabase.from("orders").update({ geo_status: "failed" }).eq("id", row.id);
+        if (error) throw error;
         toast.error("解析失败，请手动修正定位");
       }
       await onChanged();
+    } catch (error) {
+      toast.error(`储存解析结果失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setBusy(false);
     }
