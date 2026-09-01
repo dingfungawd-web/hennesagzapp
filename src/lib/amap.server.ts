@@ -1,5 +1,6 @@
-const AMAP_BASE = "https://restapi.amap.com/v3";
 import { Buffer } from "node:buffer";
+
+const AMAP_BASE = "https://restapi.amap.com/v3";
 
 export type GeoResult = {
   id: string;

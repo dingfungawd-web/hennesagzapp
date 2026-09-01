@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileSpreadsheet, Download, Save, MapPin, Trash2 } from "lucide-react";
@@ -187,10 +187,6 @@ function ImportPage() {
   const cancelBatch = useCancelImportBatch();
   const batches = allBatches.filter((batch) => batch.source === "excel");
   const cancelTarget = batches.find((batch) => batch.id === cancelBatchId) ?? null;
-
-  useEffect(() => {
-    if (!activeBatchId && batches[0]) setActiveBatchId(batches[0].id);
-  }, [activeBatchId, batches]);
 
   const parseFile = async (file: File) => {
     const buf = await file.arrayBuffer();

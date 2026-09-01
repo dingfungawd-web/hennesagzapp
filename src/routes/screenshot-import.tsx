@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Save, Sparkles, Trash2, CheckCircle2, AlertCircle, Loader2, MapPin } from "lucide-react";
@@ -79,10 +79,6 @@ function ScreenshotImportPage() {
   const cancelBatch = useCancelImportBatch();
   const batches = allBatches.filter((batch) => batch.source === "screenshot");
   const cancelTarget = batches.find((batch) => batch.id === cancelBatchId) ?? null;
-
-  useEffect(() => {
-    if (!activeBatchId && batches[0]) setActiveBatchId(batches[0].id);
-  }, [activeBatchId, batches]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
