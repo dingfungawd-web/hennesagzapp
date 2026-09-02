@@ -104,20 +104,27 @@ export function LocationFixDialog({
 
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
+  const hasPoint = point != null;
+  const initedRef = useRef(false);
   useEffect(() => {
-    if (!open || !point) return;
+    if (!open || !hasPoint || initedRef.current) return;
+    initedRef.current = true;
     let cancelled = false;
-    (async () => {
+    const start = point!;
+    void (async () => {
       const AMap = (await loadAmap()) as any;
-      if (cancelled || !AMap || !containerRef.current) return;
+      if (cancelled || !AMap || !containerRef.current) {
+        initedRef.current = false;
+        return;
+      }
       try {
         const map = new AMap.Map(containerRef.current, {
           zoom,
-          center: [point.lon, point.lat],
+          center: [start.lon, start.lat],
           resizeEnable: true,
-        });
+￼      });
         const marker = new AMap.Marker({
-          position: [point.lon, point.lat],
+          position: [start.lon, start.lat],
           draggable: true,
           cursor: "move",
         });
@@ -135,22 +142,28 @@ export function LocationFixDialog({
         markerRef.current = marker;
         setInteractive(true);
       } catch {
+        initedRef.current = false;
         setInteractive(false);
       }
     })();
     return () => {
       cancelled = true;
-      try {
-        amapRef.current?.destroy?.();
-      } catch {
-        /* ignore */
-      }
-      amapRef.current = null;
-      markerRef.current = null;
-      setInteractive(false);
     };
-    // 只喺开启对话框时建立一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasPoint]);
+
+  // 关闭对话框时清走地图实例
+  useEffect(() => {
+    if (open) return;
+    try {
+      amapRef.current?.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    amapRef.current = null;
+    markerRef.current = null;
+    initedRef.current = false;
+    setInteractive(false);
   }, [open]);
 
   // 互动地图存在时，选点变更（例如撳候选）同步过去
@@ -159,6 +172,7 @@ export function LocationFixDialog({
     markerRef.current?.setPosition?.([point.lon, point.lat]);
     amapRef.current?.setCenter?.([point.lon, point.lat]);
   }, [interactive, point]);
+
 
   // 静态图后备：跟住 center / zoom 载入
   useEffect(() => {
