@@ -493,10 +493,10 @@ export function LocationFixDialog({
               </div>
             )}
           </div>
-          <div className="max-h-[360px] space-y-1.5 overflow-auto pr-1">
+          <div className="max-h-[62vh] min-h-[420px] space-y-1.5 overflow-auto pr-1">
             {candidates.length === 0 && (
               <div className="text-xs text-muted-foreground">
-                {loadingCand ? "搜寻中…" : "冇候选结果，可直接喺地图撳低正确位置。"}
+                {loadingCand ? "搜寻中…" : "冇候选结果，可直接拖曳地图上嘅红针到正确位置。"}
               </div>
             )}
             {candidates.map((c, i) => (
@@ -504,11 +504,12 @@ export function LocationFixDialog({
                 key={`${c.lat}-${c.lon}-${i}`}
                 type="button"
                 onClick={() => pick(c)}
+                title={c.formatted}
                 className="w-full rounded border border-border bg-surface p-2 text-left hover:border-primary"
               >
-                <p className="flex items-center gap-1.5 text-xs">
-                  <MapPin className="size-3 shrink-0 text-primary" />
-                  <span className="truncate">{c.formatted}</span>
+                <p className="flex items-start gap-1.5 text-xs">
+                  <MapPin className="mt-0.5 size-3 shrink-0 text-primary" />
+                  <span className="whitespace-pre-wrap break-words leading-snug">{c.formatted}</span>
                 </p>
                 <p className="mt-1 flex items-center gap-1.5">
                   <Badge variant="outline" className="text-[10px]">
