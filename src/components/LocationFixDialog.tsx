@@ -178,7 +178,8 @@ export function LocationFixDialog({
   }, [interactive, center]);
 
 
-  // 静态图后备：跟住 center / zoom 载入
+  // 静态图后备：跟住 center / zoom 载入（高德只收整数 zoom）
+  const reqZoom = Math.round(zoom);
   useEffect(() => {
     if (!open || interactive || !center) return;
     let cancelled = false;
@@ -187,13 +188,13 @@ export function LocationFixDialog({
       void (async () => {
         try {
           const result = await getStaticMap({
-            data: { lat: center.lat, lon: center.lon, zoom, marker: false },
+            data: { lat: center.lat, lon: center.lon, zoom: reqZoom, marker: false },
           });
           if (cancelled) return;
           setMapUrl(result.url);
           setMapSize({ w: result.width ?? DEFAULT_W, h: result.height ?? DEFAULT_H });
           setMapFailed(!result.url);
-          if (result.url) setLoadedView({ center, zoom });
+          if (result.url) setLoadedView({ center, zoom: reqZoom });
         } catch {
           if (!cancelled) {
             setMapUrl(null);
