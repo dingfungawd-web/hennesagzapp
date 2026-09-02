@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
-import { Crosshair, MapPin, Search } from "lucide-react";
+import { Crosshair, MapPin, Minus, Plus, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { getGeocodeCandidates, getStaticMap, reverseGeocodePoint } from "@/lib/amap.functions";
+import { loadAmap } from "@/lib/amap-loader";
 import { supabase } from "@/integrations/supabase/client";
 
 type Candidate = {
@@ -34,23 +36,39 @@ type Props = {
   onSaved?: () => void;
 };
 
-const MAP_ZOOM = 16;
+const MIN_ZOOM = 4;
+const MAX_ZOOM = 19;
+/** 静态图实际覆盖嘅地图像素（scale=2 只係加倍解像度，唔会扩阔范围） */
+const SOURCE_W = 480;
+const SOURCE_H = 280;
 
-function movePointByPixels(
-  point: { lat: number; lon: number },
-  offsetX: number,
-  offsetY: number,
-  zoom: number,
-) {
+function project(lat: number, lon: number, zoom: number) {
   const worldSize = 256 * 2 ** zoom;
-  const x = ((point.lon + 180) / 360) * worldSize + offsetX;
-  const sinLat = Math.sin((point.lat * Math.PI) / 180);
-  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize + offsetY;
+  const x = ((lon + 180) / 360) * worldSize;
+  const sinLat = Math.sin((lat * Math.PI) / 180);
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * worldSize;
+  return { x, y };
+}
+
+function unproject(x: number, y: number, zoom: number) {
+  const worldSize = 256 * 2 ** zoom;
   const lon = (x / worldSize) * 360 - 180;
   const n = Math.PI - (2 * Math.PI * y) / worldSize;
-  const nextLat = (180 / Math.PI) * Math.atan(Math.sinh(n));
-  return { lat: nextLat, lon };
+  const lat = (180 / Math.PI) * Math.atan(Math.sinh(n));
+  return { lat, lon };
 }
+
+function offsetPoint(
+  point: { lat: number; lon: number },
+  dx: number,
+  dy: number,
+  zoom: number,
+) {
+  const p = project(point.lat, point.lon, zoom);
+  return unproject(p.x + dx, p.y + dy, zoom);
+}
+
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 export function LocationFixDialog({
   orderId,
@@ -61,10 +79,17 @@ export function LocationFixDialog({
   onOpenChange,
   onSaved,
 }: Props) {
-  const mapImageRef = useRef<HTMLImageElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const amapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [interactive, setInteractive] = useState(false);
   const [point, setPoint] = useState<{ lat: number; lon: number } | null>(
     lat != null && lon != null ? { lat: Number(lat), lon: Number(lon) } : null,
   );
+  const [center, setCenter] = useState<{ lat: number; lon: number } | null>(
+    lat != null && lon != null ? { lat: Number(lat), lon: Number(lon) } : null,
+  );
+  const [zoom, setZoom] = useState(16);
   const [nearby, setNearby] = useState<string>("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loadingCand, setLoadingCand] = useState(false);
@@ -74,37 +99,99 @@ export function LocationFixDialog({
   const [mapLoading, setMapLoading] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
 
-  // 使用 Web 服务静态地图，避免 Web 端 Key 的域名白名单令修正地图变成空白。
+  // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
   useEffect(() => {
     if (!open || !point) return;
     let cancelled = false;
-    setMapLoading(true);
-    setMapFailed(false);
     (async () => {
+      const AMap = (await loadAmap()) as any;
+      if (cancelled || !AMap || !containerRef.current) return;
       try {
-        const result = await getStaticMap({
-          data: { lat: point.lat, lon: point.lon, zoom: MAP_ZOOM },
+        const map = new AMap.Map(containerRef.current, {
+          zoom,
+          center: [point.lon, point.lat],
+          resizeEnable: true,
         });
-        if (cancelled) return;
-        setMapUrl(result.url);
-        setMapFailed(!result.url);
+        const marker = new AMap.Marker({
+          position: [point.lon, point.lat],
+          draggable: true,
+          cursor: "move",
+        });
+        map.add(marker);
+        marker.on("dragend", () => {
+          const p = marker.getPosition();
+          setPoint({ lat: p.getLat(), lon: p.getLng() });
+        });
+        map.on("click", (e: any) => {
+          const p = { lat: e.lnglat.getLat(), lon: e.lnglat.getLng() };
+          marker.setPosition([p.lon, p.lat]);
+          setPoint(p);
+        });
+        amapRef.current = map;
+        markerRef.current = marker;
+        setInteractive(true);
       } catch {
-        if (!cancelled) {
-          setMapUrl(null);
-          setMapFailed(true);
-        }
-      } finally {
-        if (!cancelled) setMapLoading(false);
+        setInteractive(false);
       }
     })();
     return () => {
       cancelled = true;
+      try {
+        amapRef.current?.destroy?.();
+      } catch {
+        /* ignore */
+      }
+      amapRef.current = null;
+      markerRef.current = null;
+      setInteractive(false);
     };
-  }, [open, point]);
+    // 只喺开启对话框时建立一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // 互动地图存在时，选点变更（例如撳候选）同步过去
+  useEffect(() => {
+    if (!interactive || !point) return;
+    markerRef.current?.setPosition?.([point.lon, point.lat]);
+    amapRef.current?.setCenter?.([point.lon, point.lat]);
+  }, [interactive, point]);
+
+  // 静态图后备：跟住 center / zoom 载入
+  useEffect(() => {
+    if (!open || interactive || !center) return;
+    let cancelled = false;
+    setMapLoading(true);
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const result = await getStaticMap({
+            data: { lat: center.lat, lon: center.lon, zoom },
+          });
+          if (cancelled) return;
+          setMapUrl(result.url);
+          setMapFailed(!result.url);
+        } catch {
+          if (!cancelled) {
+            setMapUrl(null);
+            setMapFailed(true);
+          }
+        } finally {
+          if (!cancelled) setMapLoading(false);
+        }
+      })();
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, interactive, center, zoom]);
 
   useEffect(() => {
     if (!open) return;
-    setPoint(lat != null && lon != null ? { lat: Number(lat), lon: Number(lon) } : null);
+    const p = lat != null && lon != null ? { lat: Number(lat), lon: Number(lon) } : null;
+    setPoint(p);
+    setCenter(p);
+    setZoom(16);
   }, [open, lat, lon]);
 
   // 反查地址核对
@@ -147,17 +234,77 @@ export function LocationFixDialog({
 
   const pick = (c: Candidate) => {
     setPoint({ lat: c.lat, lon: c.lon });
+    setCenter({ lat: c.lat, lon: c.lon });
   };
 
-  const pickOnMap = (event: MouseEvent<HTMLImageElement>) => {
-    if (!point || !mapImageRef.current) return;
-    const rect = mapImageRef.current.getBoundingClientRect();
-    const sourceWidth = mapImageRef.current.naturalWidth || 960;
-    const sourceHeight = mapImageRef.current.naturalHeight || 560;
-    const offsetX = ((event.clientX - rect.left) / rect.width - 0.5) * sourceWidth;
-    const offsetY = ((event.clientY - rect.top) / rect.height - 0.5) * sourceHeight;
-    setPoint(movePointByPixels(point, offsetX, offsetY, MAP_ZOOM));
+  /** 静态图：撳边度，针就去边度（唔会重新置中，方便肉眼对楼宇） */
+  const pickOnMap = (event: MouseEvent<HTMLDivElement>) => {
+    if (!center || draggingRef.current.moved) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dx = ((event.clientX - rect.left) / rect.width - 0.5) * SOURCE_W;
+    const dy = ((event.clientY - rect.top) / rect.height - 0.5) * SOURCE_H;
+    setPoint(offsetPoint(center, dx, dy, zoom));
   };
+
+  const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
+
+  const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
+    draggingRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY };
+  };
+
+  const onPointerMove = (e: MouseEvent<HTMLDivElement>) => {
+    const d = draggingRef.current;
+    if (!d.active || !center) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (Math.abs(dx) + Math.abs(dy) < 4) return;
+    d.moved = true;
+    d.x = e.clientX;
+    d.y = e.clientY;
+    setCenter(
+      offsetPoint(center, (-dx / rect.width) * SOURCE_W, (-dy / rect.height) * SOURCE_H, zoom),
+    );
+  };
+
+  const endDrag = () => {
+    draggingRef.current.active = false;
+    // 保留 moved 状态到 click 之后再清
+    window.setTimeout(() => {
+      draggingRef.current.moved = false;
+    }, 0);
+  };
+
+  const zoomBy = useCallback(
+    (delta: number) => {
+      setZoom((z) => clampZoom(z + delta));
+    },
+    [],
+  );
+
+  // 滚轮缩放（非 passive，先至可以阻止页面滚动）
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || interactive) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      setZoom((z) => clampZoom(z - dy * 0.004));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [interactive, open]);
+
+  // 静态图上嘅针位（相对容器百分比）
+  const markerPos = (() => {
+    if (!center || !point) return null;
+    const c = project(center.lat, center.lon, zoom);
+    const p = project(point.lat, point.lon, zoom);
+    const left = 50 + ((p.x - c.x) / SOURCE_W) * 100;
+    const top = 50 + ((p.y - c.y) / SOURCE_H) * 100;
+    if (left < -5 || left > 105 || top < -5 || top > 105) return null;
+    return { left, top };
+  })();
 
   const save = async () => {
     if (!point) {
@@ -209,23 +356,79 @@ export function LocationFixDialog({
         </div>
 
         <div className="grid gap-3 md:grid-cols-[1fr_260px]">
-          <div className="flex aspect-[12/7] w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-surface">
-            {mapUrl ? (
-              <img
-                ref={mapImageRef}
-                src={mapUrl}
-                alt="可点击修正的订单定位地图"
-                className="h-full w-full cursor-crosshair object-fill"
+          <div className="relative aspect-[12/7] w-full overflow-hidden rounded-lg border border-border bg-surface">
+            {/* 高德 JS 地图容器；载入唔到就用下面嘅静态图 */}
+            <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+
+            {!interactive && (
+              <div
+                className="absolute inset-0 select-none"
+                onMouseDown={onPointerDown}
+                onMouseMove={onPointerMove}
+                onMouseUp={endDrag}
+                onMouseLeave={endDrag}
                 onClick={pickOnMap}
-              />
-            ) : (
-              <p className="px-4 text-center text-xs text-muted-foreground">
-                {mapLoading
-                  ? "地图载入中…"
-                  : mapFailed
-                    ? "地图暂时无法载入，请先选择右方候选地点"
-                    : "请先选择一个候选地点"}
-              </p>
+                style={{ cursor: mapUrl ? "crosshair" : "default" }}
+              >
+                {mapUrl ? (
+                  <>
+                    <img
+                      src={mapUrl}
+                      alt="可点击修正的订单定位地图"
+                      draggable={false}
+                      className="pointer-events-none h-full w-full object-fill"
+                    />
+                    {markerPos && (
+                      <MapPin
+                        className="pointer-events-none absolute size-7 -translate-x-1/2 -translate-y-full fill-primary text-primary drop-shadow"
+                        style={{ left: `${markerPos.left}%`, top: `${markerPos.top}%` }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                    {mapLoading
+                      ? "地图载入中…"
+                      : mapFailed
+                        ? "地图暂时无法载入，请先选择右方候选地点"
+                        : "请先选择一个候选地点"}
+                  </div>
+                )}
+
+                <div className="absolute right-2 top-2 flex flex-col gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="size-8"
+                    aria-label="放大"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      zoomBy(1);
+                    }}
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="size-8"
+                    aria-label="缩小"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      zoomBy(-1);
+                    }}
+                  >
+                    <Minus className="size-4" />
+                  </Button>
+                </div>
+                {mapUrl && (
+                  <span className="absolute bottom-2 left-2 rounded bg-background/80 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    撳地图放针 · 拖曳平移 · 滚轮／±缩放（zoom {Math.round(zoom)}）
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <div className="max-h-[360px] space-y-1.5 overflow-auto pr-1">
