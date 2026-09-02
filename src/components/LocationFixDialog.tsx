@@ -101,6 +101,10 @@ export function LocationFixDialog({
   const [mapSize, setMapSize] = useState({ w: DEFAULT_W, h: DEFAULT_H });
   const [mapLoading, setMapLoading] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
+  const [loadedView, setLoadedView] = useState<{
+    center: { lat: number; lon: number };
+    zoom: number;
+  } | null>(null);
 
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
