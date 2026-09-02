@@ -38,9 +38,10 @@ type Props = {
 
 const MIN_ZOOM = 4;
 const MAX_ZOOM = 19;
-/** 静态图实际覆盖嘅地图像素（scale=2 只係加倍解像度，唔会扩阔范围） */
-const SOURCE_W = 480;
-const SOURCE_H = 280;
+/** 静态图默认覆盖嘅地图像素（scale=1，图片像素 === 地图像素） */
+const DEFAULT_W = 960;
+const DEFAULT_H = 560;
+
 
 function project(lat: number, lon: number, zoom: number) {
   const worldSize = 256 * 2 ** zoom;
