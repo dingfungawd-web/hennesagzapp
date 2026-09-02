@@ -161,12 +161,16 @@ export function LocationFixDialog({
     setInteractive(false);
   }, [open]);
 
-  // 互动地图存在时，选点变更（例如撳候选）同步过去
+  // 互动地图存在时，选点变更（例如撳候选）同步过去；地图中心只喺拣候选时先跟住郁
   useEffect(() => {
     if (!interactive || !point) return;
     markerRef.current?.setPosition?.([point.lon, point.lat]);
-    amapRef.current?.setCenter?.([point.lon, point.lat]);
   }, [interactive, point]);
+
+  useEffect(() => {
+    if (!interactive || !center) return;
+    amapRef.current?.setCenter?.([center.lon, center.lat]);
+  }, [interactive, center]);
 
 
   // 静态图后备：跟住 center / zoom 载入
