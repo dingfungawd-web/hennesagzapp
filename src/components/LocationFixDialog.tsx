@@ -209,7 +209,7 @@ export function LocationFixDialog({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, interactive, center, zoom]);
+  }, [open, interactive, center, reqZoom]);
 
   useEffect(() => {
     if (!open) return;
