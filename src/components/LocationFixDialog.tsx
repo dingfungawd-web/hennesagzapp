@@ -198,7 +198,7 @@ export function LocationFixDialog({
           if (!cancelled) setMapLoading(false);
         }
       })();
-    }, 220);
+    }, 90);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
