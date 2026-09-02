@@ -409,8 +409,8 @@ export function LocationFixDialog({
           </Button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-[1fr_260px]">
-          <div className="relative aspect-[12/7] w-full overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="grid gap-3 md:grid-cols-[1fr_320px]">
+          <div className="relative h-[62vh] min-h-[420px] w-full overflow-hidden rounded-lg border border-border bg-surface">
             {/* 高德 JS 地图容器；载入唔到就用下面嘅静态图 */}
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
@@ -422,21 +422,27 @@ export function LocationFixDialog({
                 onMouseMove={onPointerMove}
                 onMouseUp={endDrag}
                 onMouseLeave={endDrag}
-                onClick={pickOnMap}
-                style={{ cursor: mapUrl ? "crosshair" : "default", touchAction: "none" }}
+                style={{ cursor: mapUrl ? "grab" : "default", touchAction: "none" }}
               >
 
                 {mapUrl ? (
                   <>
                     <img
                       src={mapUrl}
-                      alt="可点击修正的订单定位地图"
+                      alt="订单定位地图"
                       draggable={false}
                       className="pointer-events-none h-full w-full object-fill"
+                      style={{ transform: imgTransform, transformOrigin: "center center" }}
                     />
                     {markerPos && (
                       <MapPin
-                        className="pointer-events-none absolute size-7 -translate-x-1/2 -translate-y-full fill-primary text-primary drop-shadow"
+                        role="button"
+                        aria-label="拖曳移动定位针"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          pinDragRef.current = true;
+                        }}
+                        className="absolute size-9 -translate-x-1/2 -translate-y-full cursor-move fill-primary text-primary drop-shadow"
                         style={{ left: `${markerPos.left}%`, top: `${markerPos.top}%` }}
                       />
                     )}
