@@ -405,14 +405,16 @@ export function LocationFixDialog({
 
             {!interactive && (
               <div
+                ref={overlayRef}
                 className="absolute inset-0 select-none"
                 onMouseDown={onPointerDown}
                 onMouseMove={onPointerMove}
                 onMouseUp={endDrag}
                 onMouseLeave={endDrag}
                 onClick={pickOnMap}
-                style={{ cursor: mapUrl ? "crosshair" : "default" }}
+                style={{ cursor: mapUrl ? "crosshair" : "default", touchAction: "none" }}
               >
+
                 {mapUrl ? (
                   <>
                     <img
