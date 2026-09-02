@@ -133,11 +133,6 @@ export function LocationFixDialog({
           const p = marker.getPosition();
           setPoint({ lat: p.getLat(), lon: p.getLng() });
         });
-        map.on("click", (e: any) => {
-          const p = { lat: e.lnglat.getLat(), lon: e.lnglat.getLng() };
-          marker.setPosition([p.lon, p.lat]);
-          setPoint(p);
-        });
         amapRef.current = map;
         markerRef.current = marker;
         setInteractive(true);
