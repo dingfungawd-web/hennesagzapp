@@ -76,13 +76,27 @@ export const getGeocodeCandidates = createServerFn({ method: "POST" })
 /** 静态地图预览图（base64 data URL） */
 export const getStaticMap = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ lat: z.number(), lon: z.number(), zoom: z.number().optional() }).parse(data),
+    z
+      .object({
+        lat: z.number(),
+        lon: z.number(),
+        zoom: z.number().optional(),
+        marker: z.boolean().optional(),
+      })
+      .parse(data),
   )
   .handler(async ({ data }) => {
     const apiKey = process.env["AMAP_API_KEY"];
     if (!apiKey) return { url: null as string | null, width: STATIC_MAP_W, height: STATIC_MAP_H };
-    const url = await staticMapDataUrl(apiKey, data.lat, data.lon, data.zoom ?? 15);
+    const url = await staticMapDataUrl(
+      apiKey,
+      data.lat,
+      data.lon,
+      data.zoom ?? 15,
+      data.marker ?? true,
+    );
     return { url, width: STATIC_MAP_W, height: STATIC_MAP_H };
+
   });
 
 
