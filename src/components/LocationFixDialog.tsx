@@ -336,6 +336,18 @@ export function LocationFixDialog({
   }, [interactive, open, mapUrl, zoom, mapSize.w, mapSize.h]);
 
 
+  /** 未等到新图返嚟之前，用 CSS transform 即时预览缩放／平移，减少「反应慢」感觉 */
+  const imgTransform = (() => {
+    if (!center || !loadedView) return undefined;
+    const scale = 2 ** (zoom - loadedView.zoom);
+    const c = project(center.lat, center.lon, zoom);
+    const l = project(loadedView.center.lat, loadedView.center.lon, zoom);
+    const tx = l.x - c.x;
+    const ty = l.y - c.y;
+    if (scale === 1 && tx === 0 && ty === 0) return undefined;
+    return `translate(${tx}px, ${ty}px) scale(${scale})`;
+  })();
+
   // 静态图上嘅针位（相对容器百分比）
   const markerPos = (() => {
     if (!center || !point) return null;
