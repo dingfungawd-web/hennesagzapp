@@ -387,7 +387,7 @@ export function LocationFixDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-h-[92vh] w-[96vw] max-w-6xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>核对／修正定位</DialogTitle>
         </DialogHeader>
