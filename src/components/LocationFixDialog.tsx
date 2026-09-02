@@ -81,6 +81,7 @@ export function LocationFixDialog({
   onSaved,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const amapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [interactive, setInteractive] = useState(false);
@@ -97,8 +98,10 @@ export function LocationFixDialog({
   const [keyword, setKeyword] = useState(address);
   const [saving, setSaving] = useState(false);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [mapSize, setMapSize] = useState({ w: DEFAULT_W, h: DEFAULT_H });
   const [mapLoading, setMapLoading] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
+
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
   useEffect(() => {
