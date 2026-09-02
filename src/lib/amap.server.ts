@@ -193,11 +193,14 @@ export async function staticMapDataUrl(
   lat: number,
   lon: number,
   zoom = 15,
+  marker = true,
   size = `${STATIC_MAP_W}*${STATIC_MAP_H}`,
 ) {
-  const url = `https://restapi.amap.com/v3/staticmap?location=${lon},${lat}&zoom=${zoom}&size=${size}&scale=1&key=${apiKey}`;
+  const markers = marker ? `&markers=mid,0xFF6B00,:${lon},${lat}` : "";
+  const url = `https://restapi.amap.com/v3/staticmap?location=${lon},${lat}&zoom=${zoom}&size=${size}&scale=1${markers}&key=${apiKey}`;
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+
 
     if (!resp.ok) return null;
     const type = resp.headers.get("content-type") ?? "";
