@@ -260,7 +260,8 @@ export function LocationFixDialog({
     setCenter({ lat: c.lat, lon: c.lon });
   };
 
-  const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
+  const draggingRef = useRef({ active: false, x: 0, y: 0 });
+  const pinDragRef = useRef(false);
 
   /** 图片显示尺寸 ↔ 地图像素换算：图片係 object-fill，故此按容器阔高线性对应 */
   const toMapPx = (rect: DOMRect, clientX: number, clientY: number) => ({
@@ -268,26 +269,24 @@ export function LocationFixDialog({
     dy: ((clientY - rect.top) / rect.height - 0.5) * mapSize.h,
   });
 
-  /** 静态图：撳边度，针就去边度（唔会重新置中，方便肉眼对楼宇） */
-  const pickOnMap = (event: MouseEvent<HTMLDivElement>) => {
-    if (!center || draggingRef.current.moved) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const { dx, dy } = toMapPx(rect, event.clientX, event.clientY);
-    setPoint(offsetPoint(center, dx, dy, zoom));
-  };
-
   const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
-    draggingRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY };
+    if (pinDragRef.current) return;
+    draggingRef.current = { active: true, x: e.clientX, y: e.clientY };
   };
 
   const onPointerMove = (e: MouseEvent<HTMLDivElement>) => {
-    const d = draggingRef.current;
-    if (!d.active || !center) return;
+    if (!center) return;
     const rect = e.currentTarget.getBoundingClientRect();
+    if (pinDragRef.current) {
+      const { dx, dy } = toMapPx(rect, e.clientX, e.clientY);
+      setPoint(offsetPoint(center, dx, dy, zoom));
+      return;
+    }
+    const d = draggingRef.current;
+    if (!d.active) return;
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
-    if (Math.abs(dx) + Math.abs(dy) < 4) return;
-    d.moved = true;
+    if (Math.abs(dx) + Math.abs(dy) < 2) return;
     d.x = e.clientX;
     d.y = e.clientY;
     setCenter(
@@ -297,10 +296,7 @@ export function LocationFixDialog({
 
   const endDrag = () => {
     draggingRef.current.active = false;
-    // 保留 moved 状态到 click 之后再清
-    window.setTimeout(() => {
-      draggingRef.current.moved = false;
-    }, 0);
+    pinDragRef.current = false;
   };
 
   const zoomBy = useCallback((delta: number) => {
