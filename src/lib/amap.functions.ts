@@ -77,10 +77,11 @@ export const getStaticMap = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const apiKey = process.env["AMAP_API_KEY"];
-    if (!apiKey) return { url: null as string | null };
+    if (!apiKey) return { url: null as string | null, width: STATIC_MAP_W, height: STATIC_MAP_H };
     const url = await staticMapDataUrl(apiKey, data.lat, data.lon, data.zoom ?? 15);
-    return { url };
+    return { url, width: STATIC_MAP_W, height: STATIC_MAP_H };
   });
+
 
 /** 由座标反查地址 */
 export const reverseGeocodePoint = createServerFn({ method: "POST" })
