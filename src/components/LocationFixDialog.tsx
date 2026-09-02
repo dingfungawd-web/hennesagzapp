@@ -101,6 +101,10 @@ export function LocationFixDialog({
   const [mapSize, setMapSize] = useState({ w: DEFAULT_W, h: DEFAULT_H });
   const [mapLoading, setMapLoading] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
+  const [loadedView, setLoadedView] = useState<{
+    center: { lat: number; lon: number };
+    zoom: number;
+  } | null>(null);
 
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
@@ -133,11 +137,6 @@ export function LocationFixDialog({
           const p = marker.getPosition();
           setPoint({ lat: p.getLat(), lon: p.getLng() });
         });
-        map.on("click", (e: any) => {
-          const p = { lat: e.lnglat.getLat(), lon: e.lnglat.getLng() };
-          marker.setPosition([p.lon, p.lat]);
-          setPoint(p);
-        });
         amapRef.current = map;
         markerRef.current = marker;
         setInteractive(true);
@@ -166,12 +165,16 @@ export function LocationFixDialog({
     setInteractive(false);
   }, [open]);
 
-  // 互动地图存在时，选点变更（例如撳候选）同步过去
+  // 互动地图存在时，选点变更（例如撳候选）同步过去；地图中心只喺拣候选时先跟住郁
   useEffect(() => {
     if (!interactive || !point) return;
     markerRef.current?.setPosition?.([point.lon, point.lat]);
-    amapRef.current?.setCenter?.([point.lon, point.lat]);
   }, [interactive, point]);
+
+  useEffect(() => {
+    if (!interactive || !center) return;
+    amapRef.current?.setCenter?.([center.lon, center.lat]);
+  }, [interactive, center]);
 
 
   // 静态图后备：跟住 center / zoom 载入
@@ -189,7 +192,7 @@ export function LocationFixDialog({
           setMapUrl(result.url);
           setMapSize({ w: result.width ?? DEFAULT_W, h: result.height ?? DEFAULT_H });
           setMapFailed(!result.url);
-
+          if (result.url) setLoadedView({ center, zoom });
         } catch {
           if (!cancelled) {
             setMapUrl(null);
@@ -199,7 +202,7 @@ export function LocationFixDialog({
           if (!cancelled) setMapLoading(false);
         }
       })();
-    }, 220);
+    }, 90);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -257,7 +260,8 @@ export function LocationFixDialog({
     setCenter({ lat: c.lat, lon: c.lon });
   };
 
-  const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
+  const draggingRef = useRef({ active: false, x: 0, y: 0 });
+  const pinDragRef = useRef(false);
 
   /** 图片显示尺寸 ↔ 地图像素换算：图片係 object-fill，故此按容器阔高线性对应 */
   const toMapPx = (rect: DOMRect, clientX: number, clientY: number) => ({
@@ -265,26 +269,24 @@ export function LocationFixDialog({
     dy: ((clientY - rect.top) / rect.height - 0.5) * mapSize.h,
   });
 
-  /** 静态图：撳边度，针就去边度（唔会重新置中，方便肉眼对楼宇） */
-  const pickOnMap = (event: MouseEvent<HTMLDivElement>) => {
-    if (!center || draggingRef.current.moved) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const { dx, dy } = toMapPx(rect, event.clientX, event.clientY);
-    setPoint(offsetPoint(center, dx, dy, zoom));
-  };
-
   const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
-    draggingRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY };
+    if (pinDragRef.current) return;
+    draggingRef.current = { active: true, x: e.clientX, y: e.clientY };
   };
 
   const onPointerMove = (e: MouseEvent<HTMLDivElement>) => {
-    const d = draggingRef.current;
-    if (!d.active || !center) return;
+    if (!center) return;
     const rect = e.currentTarget.getBoundingClientRect();
+    if (pinDragRef.current) {
+      const { dx, dy } = toMapPx(rect, e.clientX, e.clientY);
+      setPoint(offsetPoint(center, dx, dy, zoom));
+      return;
+    }
+    const d = draggingRef.current;
+    if (!d.active) return;
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
-    if (Math.abs(dx) + Math.abs(dy) < 4) return;
-    d.moved = true;
+    if (Math.abs(dx) + Math.abs(dy) < 2) return;
     d.x = e.clientX;
     d.y = e.clientY;
     setCenter(
@@ -294,10 +296,7 @@ export function LocationFixDialog({
 
   const endDrag = () => {
     draggingRef.current.active = false;
-    // 保留 moved 状态到 click 之后再清
-    window.setTimeout(() => {
-      draggingRef.current.moved = false;
-    }, 0);
+    pinDragRef.current = false;
   };
 
   const zoomBy = useCallback((delta: number) => {
@@ -336,6 +335,18 @@ export function LocationFixDialog({
     return () => el.removeEventListener("wheel", onWheel);
   }, [interactive, open, mapUrl, zoom, mapSize.w, mapSize.h]);
 
+
+  /** 未等到新图返嚟之前，用 CSS transform 即时预览缩放／平移，减少「反应慢」感觉 */
+  const imgTransform = (() => {
+    if (!center || !loadedView) return undefined;
+    const scale = 2 ** (zoom - loadedView.zoom);
+    const c = project(center.lat, center.lon, zoom);
+    const l = project(loadedView.center.lat, loadedView.center.lon, zoom);
+    const tx = l.x - c.x;
+    const ty = l.y - c.y;
+    if (scale === 1 && tx === 0 && ty === 0) return undefined;
+    return `translate(${tx}px, ${ty}px) scale(${scale})`;
+  })();
 
   // 静态图上嘅针位（相对容器百分比）
   const markerPos = (() => {
@@ -376,7 +387,7 @@ export function LocationFixDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-h-[92vh] w-[96vw] max-w-6xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>核对／修正定位</DialogTitle>
         </DialogHeader>
@@ -398,8 +409,8 @@ export function LocationFixDialog({
           </Button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-[1fr_260px]">
-          <div className="relative aspect-[12/7] w-full overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="grid gap-3 md:grid-cols-[1fr_320px]">
+          <div className="relative h-[62vh] min-h-[420px] w-full overflow-hidden rounded-lg border border-border bg-surface">
             {/* 高德 JS 地图容器；载入唔到就用下面嘅静态图 */}
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
 
@@ -411,21 +422,27 @@ export function LocationFixDialog({
                 onMouseMove={onPointerMove}
                 onMouseUp={endDrag}
                 onMouseLeave={endDrag}
-                onClick={pickOnMap}
-                style={{ cursor: mapUrl ? "crosshair" : "default", touchAction: "none" }}
+                style={{ cursor: mapUrl ? "grab" : "default", touchAction: "none" }}
               >
 
                 {mapUrl ? (
                   <>
                     <img
                       src={mapUrl}
-                      alt="可点击修正的订单定位地图"
+                      alt="订单定位地图"
                       draggable={false}
                       className="pointer-events-none h-full w-full object-fill"
+                      style={{ transform: imgTransform, transformOrigin: "center center" }}
                     />
                     {markerPos && (
                       <MapPin
-                        className="pointer-events-none absolute size-7 -translate-x-1/2 -translate-y-full fill-primary text-primary drop-shadow"
+                        role="button"
+                        aria-label="拖曳移动定位针"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          pinDragRef.current = true;
+                        }}
+                        className="absolute size-9 -translate-x-1/2 -translate-y-full cursor-move fill-primary text-primary drop-shadow"
                         style={{ left: `${markerPos.left}%`, top: `${markerPos.top}%` }}
                       />
                     )}
@@ -470,16 +487,16 @@ export function LocationFixDialog({
                 </div>
                 {mapUrl && (
                   <span className="absolute bottom-2 left-2 rounded bg-background/80 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                    撳地图放针 · 拖曳平移 · 滚轮／±缩放（zoom {Math.round(zoom)}）
+                    拖曳地图平移 · 拖曳红针改位置 · 滚轮／±缩放（zoom {Math.round(zoom)}）
                   </span>
                 )}
               </div>
             )}
           </div>
-          <div className="max-h-[360px] space-y-1.5 overflow-auto pr-1">
+          <div className="max-h-[62vh] min-h-[420px] space-y-1.5 overflow-auto pr-1">
             {candidates.length === 0 && (
               <div className="text-xs text-muted-foreground">
-                {loadingCand ? "搜寻中…" : "冇候选结果，可直接喺地图撳低正确位置。"}
+                {loadingCand ? "搜寻中…" : "冇候选结果，可直接拖曳地图上嘅红针到正确位置。"}
               </div>
             )}
             {candidates.map((c, i) => (
@@ -487,11 +504,12 @@ export function LocationFixDialog({
                 key={`${c.lat}-${c.lon}-${i}`}
                 type="button"
                 onClick={() => pick(c)}
+                title={c.formatted}
                 className="w-full rounded border border-border bg-surface p-2 text-left hover:border-primary"
               >
-                <p className="flex items-center gap-1.5 text-xs">
-                  <MapPin className="size-3 shrink-0 text-primary" />
-                  <span className="truncate">{c.formatted}</span>
+                <p className="flex items-start gap-1.5 text-xs">
+                  <MapPin className="mt-0.5 size-3 shrink-0 text-primary" />
+                  <span className="whitespace-pre-wrap break-words leading-snug">{c.formatted}</span>
                 </p>
                 <p className="mt-1 flex items-center gap-1.5">
                   <Badge variant="outline" className="text-[10px]">
