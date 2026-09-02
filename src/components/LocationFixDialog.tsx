@@ -183,7 +183,7 @@ export function LocationFixDialog({
       void (async () => {
         try {
           const result = await getStaticMap({
-            data: { lat: center.lat, lon: center.lon, zoom },
+            data: { lat: center.lat, lon: center.lon, zoom, marker: false },
           });
           if (cancelled) return;
           setMapUrl(result.url);
