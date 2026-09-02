@@ -487,7 +487,7 @@ export function LocationFixDialog({
                 </div>
                 {mapUrl && (
                   <span className="absolute bottom-2 left-2 rounded bg-background/80 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                    撳地图放针 · 拖曳平移 · 滚轮／±缩放（zoom {Math.round(zoom)}）
+                    拖曳地图平移 · 拖曳红针改位置 · 滚轮／±缩放（zoom {Math.round(zoom)}）
                   </span>
                 )}
               </div>
