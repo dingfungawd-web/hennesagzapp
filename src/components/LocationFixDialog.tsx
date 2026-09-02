@@ -122,7 +122,7 @@ export function LocationFixDialog({
           zoom,
           center: [start.lon, start.lat],
           resizeEnable: true,
-￼      });
+});
         const marker = new AMap.Marker({
           position: [start.lon, start.lat],
           draggable: true,
