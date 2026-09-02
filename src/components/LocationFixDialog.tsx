@@ -259,15 +259,19 @@ export function LocationFixDialog({
 
   const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
 
+  /** 图片显示尺寸 ↔ 地图像素换算：图片係 object-fill，故此按容器阔高线性对应 */
+  const toMapPx = (rect: DOMRect, clientX: number, clientY: number) => ({
+    dx: ((clientX - rect.left) / rect.width - 0.5) * mapSize.w,
+    dy: ((clientY - rect.top) / rect.height - 0.5) * mapSize.h,
+  });
+
   /** 静态图：撳边度，针就去边度（唔会重新置中，方便肉眼对楼宇） */
   const pickOnMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!center || draggingRef.current.moved) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const dx = ((event.clientX - rect.left) / rect.width - 0.5) * SOURCE_W;
-    const dy = ((event.clientY - rect.top) / rect.height - 0.5) * SOURCE_H;
+    const { dx, dy } = toMapPx(rect, event.clientX, event.clientY);
     setPoint(offsetPoint(center, dx, dy, zoom));
   };
-
 
   const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
     draggingRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY };
@@ -284,7 +288,7 @@ export function LocationFixDialog({
     d.x = e.clientX;
     d.y = e.clientY;
     setCenter(
-      offsetPoint(center, (-dx / rect.width) * SOURCE_W, (-dy / rect.height) * SOURCE_H, zoom),
+      offsetPoint(center, (-dx / rect.width) * mapSize.w, (-dy / rect.height) * mapSize.h, zoom),
     );
   };
 
@@ -296,25 +300,42 @@ export function LocationFixDialog({
     }, 0);
   };
 
-  const zoomBy = useCallback(
-    (delta: number) => {
-      setZoom((z) => clampZoom(z + delta));
-    },
-    [],
-  );
+  const zoomBy = useCallback((delta: number) => {
+    setZoom((z) => clampZoom(z + delta));
+  }, []);
 
-  // 滚轮缩放（非 passive，先至可以阻止页面滚动）
+  /** 以游标为锚点缩放：游标下嘅位置保持唔郁 */
+  const zoomAtRef = useRef<(nextZoom: number, dx: number, dy: number) => void>(() => {});
+  zoomAtRef.current = (nextZoom, dx, dy) => {
+    const z = clampZoom(nextZoom);
+    if (!center || z === zoom) {
+      setZoom(z);
+      return;
+    }
+    // 游标喺旧 zoom 对应嘅地理点，喺新 zoom 之下要留返喺同一屏幕位置
+    const anchor = offsetPoint(center, dx, dy, zoom);
+    const a = project(anchor.lat, anchor.lon, z);
+    const nc = unproject(a.x - dx, a.y - dy, z);
+    setCenter({ lat: nc.lat, lon: nc.lon });
+    setZoom(z);
+  };
+
+  // 滚轮／触控板缩放（非 passive，先至可以阻止页面滚动同页面级 pinch）
   useEffect(() => {
-    const el = containerRef.current;
+    const el = overlayRef.current;
     if (!el || interactive) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      setZoom((z) => clampZoom(z - dy * 0.004));
+      const dyRaw = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      const rect = el.getBoundingClientRect();
+      const dx = ((e.clientX - rect.left) / rect.width - 0.5) * mapSize.w;
+      const dy = ((e.clientY - rect.top) / rect.height - 0.5) * mapSize.h;
+      zoomAtRef.current(zoom - dyRaw * 0.004, dx, dy);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [interactive, open]);
+  }, [interactive, open, mapUrl, zoom, mapSize.w, mapSize.h]);
+
 
   // 静态图上嘅针位（相对容器百分比）
   const markerPos = (() => {
