@@ -188,7 +188,7 @@ export function LocationFixDialog({
           setMapUrl(result.url);
           setMapSize({ w: result.width ?? DEFAULT_W, h: result.height ?? DEFAULT_H });
           setMapFailed(!result.url);
-
+          if (result.url) setLoadedView({ center, zoom });
         } catch {
           if (!cancelled) {
             setMapUrl(null);
