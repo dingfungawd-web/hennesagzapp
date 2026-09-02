@@ -237,6 +237,8 @@ export function LocationFixDialog({
     setCenter({ lat: c.lat, lon: c.lon });
   };
 
+  const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
+
   /** 静态图：撳边度，针就去边度（唔会重新置中，方便肉眼对楼宇） */
   const pickOnMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!center || draggingRef.current.moved) return;
@@ -246,7 +248,6 @@ export function LocationFixDialog({
     setPoint(offsetPoint(center, dx, dy, zoom));
   };
 
-  const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
 
   const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
     draggingRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY };
