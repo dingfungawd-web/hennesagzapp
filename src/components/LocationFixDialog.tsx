@@ -37,10 +37,11 @@ type Props = {
 };
 
 const MIN_ZOOM = 4;
-const MAX_ZOOM = 19;
+/** 高德静态图最高只支援 zoom 17，再大只会係影像放大 */
+const MAX_ZOOM = 17;
 /** 静态图默认覆盖嘅地图像素（scale=1，图片像素 === 地图像素） */
-const DEFAULT_W = 960;
-const DEFAULT_H = 560;
+const DEFAULT_W = 1024;
+const DEFAULT_H = 640;
 
 
 function project(lat: number, lon: number, zoom: number) {
