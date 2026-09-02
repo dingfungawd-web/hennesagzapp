@@ -347,7 +347,9 @@ export function LocationFixDialog({
     const tx = l.x - c.x;
     const ty = l.y - c.y;
     if (scale === 1 && tx === 0 && ty === 0) return undefined;
-    return `translate(${tx}px, ${ty}px) scale(${scale})`;
+    // 图片係 object-fill 拉伸到容器大细，translate 用百分比先会同容器同步，
+    // 否则拖曳时地图影像同定位针会走位（睇落似针跟住郁）
+    return `translate(${(tx / mapSize.w) * 100}%, ${(ty / mapSize.h) * 100}%) scale(${scale})`;
   })();
 
   // 静态图上嘅针位（相对容器百分比）
