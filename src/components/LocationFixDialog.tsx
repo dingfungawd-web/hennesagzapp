@@ -37,10 +37,11 @@ type Props = {
 };
 
 const MIN_ZOOM = 4;
-const MAX_ZOOM = 19;
+/** 高德静态图最高只支援 zoom 17，再大只会係影像放大 */
+const MAX_ZOOM = 17;
 /** 静态图默认覆盖嘅地图像素（scale=1，图片像素 === 地图像素） */
-const DEFAULT_W = 960;
-const DEFAULT_H = 560;
+const DEFAULT_W = 1024;
+const DEFAULT_H = 640;
 
 
 function project(lat: number, lon: number, zoom: number) {
@@ -177,7 +178,8 @@ export function LocationFixDialog({
   }, [interactive, center]);
 
 
-  // 静态图后备：跟住 center / zoom 载入
+  // 静态图后备：跟住 center / zoom 载入（高德只收整数 zoom）
+  const reqZoom = Math.round(zoom);
   useEffect(() => {
     if (!open || interactive || !center) return;
     let cancelled = false;
@@ -186,13 +188,13 @@ export function LocationFixDialog({
       void (async () => {
         try {
           const result = await getStaticMap({
-            data: { lat: center.lat, lon: center.lon, zoom, marker: false },
+            data: { lat: center.lat, lon: center.lon, zoom: reqZoom, marker: false },
           });
           if (cancelled) return;
           setMapUrl(result.url);
           setMapSize({ w: result.width ?? DEFAULT_W, h: result.height ?? DEFAULT_H });
           setMapFailed(!result.url);
-          if (result.url) setLoadedView({ center, zoom });
+          if (result.url) setLoadedView({ center, zoom: reqZoom });
         } catch {
           if (!cancelled) {
             setMapUrl(null);
@@ -207,7 +209,7 @@ export function LocationFixDialog({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, interactive, center, zoom]);
+  }, [open, interactive, center, reqZoom]);
 
   useEffect(() => {
     if (!open) return;

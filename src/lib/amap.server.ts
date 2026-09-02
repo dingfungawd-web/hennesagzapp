@@ -185,8 +185,8 @@ export async function fetchDrivingRoute(
 
 /** 静态地图预览图（回传 data URL，避免喺前端泄露 Web 服务 Key）
  *  注意：scale=1，令图片像素 === 地图像素，前端座标换算先至准。 */
-export const STATIC_MAP_W = 960;
-export const STATIC_MAP_H = 560;
+export const STATIC_MAP_W = 1024;
+export const STATIC_MAP_H = 640;
 
 export async function staticMapDataUrl(
   apiKey: string,
@@ -197,7 +197,8 @@ export async function staticMapDataUrl(
   size = `${STATIC_MAP_W}*${STATIC_MAP_H}`,
 ) {
   const markers = marker ? `&markers=mid,0xFF6B00,:${lon},${lat}` : "";
-  const url = `https://restapi.amap.com/v3/staticmap?location=${lon},${lat}&zoom=${zoom}&size=${size}&scale=1${markers}&key=${apiKey}`;
+  const z = Math.min(17, Math.max(1, Math.round(zoom)));
+  const url = `https://restapi.amap.com/v3/staticmap?location=${lon},${lat}&zoom=${z}&size=${size}&scale=1${markers}&key=${apiKey}`;
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
