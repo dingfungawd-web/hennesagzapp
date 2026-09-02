@@ -342,8 +342,9 @@ export function LocationFixDialog({
     if (!center || !point) return null;
     const c = project(center.lat, center.lon, zoom);
     const p = project(point.lat, point.lon, zoom);
-    const left = 50 + ((p.x - c.x) / SOURCE_W) * 100;
-    const top = 50 + ((p.y - c.y) / SOURCE_H) * 100;
+    const left = 50 + ((p.x - c.x) / mapSize.w) * 100;
+    const top = 50 + ((p.y - c.y) / mapSize.h) * 100;
+
     if (left < -5 || left > 105 || top < -5 || top > 105) return null;
     return { left, top };
   })();
