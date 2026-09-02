@@ -187,7 +187,9 @@ export function LocationFixDialog({
           });
           if (cancelled) return;
           setMapUrl(result.url);
+          setMapSize({ w: result.width ?? DEFAULT_W, h: result.height ?? DEFAULT_H });
           setMapFailed(!result.url);
+
         } catch {
           if (!cancelled) {
             setMapUrl(null);
