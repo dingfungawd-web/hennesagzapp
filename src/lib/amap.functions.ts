@@ -6,9 +6,12 @@ import {
   fetchDrivingRoute,
   staticMapDataUrl,
   reverseGeocode,
+  STATIC_MAP_W,
+  STATIC_MAP_H,
   type GeoResult,
   type Candidate,
 } from "./amap.server";
+
 
 // 仅作 Lovable 预览环境的回退：Vercel 生产环境由前端直接读 VITE_AMAP_JS_KEY。
 export const getAmapConfig = createServerFn({ method: "GET" }).handler(async () => {
@@ -73,14 +76,29 @@ export const getGeocodeCandidates = createServerFn({ method: "POST" })
 /** 静态地图预览图（base64 data URL） */
 export const getStaticMap = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ lat: z.number(), lon: z.number(), zoom: z.number().optional() }).parse(data),
+    z
+      .object({
+        lat: z.number(),
+        lon: z.number(),
+        zoom: z.number().optional(),
+        marker: z.boolean().optional(),
+      })
+      .parse(data),
   )
   .handler(async ({ data }) => {
     const apiKey = process.env["AMAP_API_KEY"];
-    if (!apiKey) return { url: null as string | null };
-    const url = await staticMapDataUrl(apiKey, data.lat, data.lon, data.zoom ?? 15);
-    return { url };
+    if (!apiKey) return { url: null as string | null, width: STATIC_MAP_W, height: STATIC_MAP_H };
+    const url = await staticMapDataUrl(
+      apiKey,
+      data.lat,
+      data.lon,
+      data.zoom ?? 15,
+      data.marker ?? true,
+    );
+    return { url, width: STATIC_MAP_W, height: STATIC_MAP_H };
+
   });
+
 
 /** 由座标反查地址 */
 export const reverseGeocodePoint = createServerFn({ method: "POST" })

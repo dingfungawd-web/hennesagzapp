@@ -38,9 +38,10 @@ type Props = {
 
 const MIN_ZOOM = 4;
 const MAX_ZOOM = 19;
-/** 静态图实际覆盖嘅地图像素（scale=2 只係加倍解像度，唔会扩阔范围） */
-const SOURCE_W = 480;
-const SOURCE_H = 280;
+/** 静态图默认覆盖嘅地图像素（scale=1，图片像素 === 地图像素） */
+const DEFAULT_W = 960;
+const DEFAULT_H = 560;
+
 
 function project(lat: number, lon: number, zoom: number) {
   const worldSize = 256 * 2 ** zoom;
@@ -80,6 +81,7 @@ export function LocationFixDialog({
   onSaved,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const amapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [interactive, setInteractive] = useState(false);
@@ -96,24 +98,33 @@ export function LocationFixDialog({
   const [keyword, setKeyword] = useState(address);
   const [saving, setSaving] = useState(false);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [mapSize, setMapSize] = useState({ w: DEFAULT_W, h: DEFAULT_H });
   const [mapLoading, setMapLoading] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
 
+
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
+  const hasPoint = point != null;
+  const initedRef = useRef(false);
   useEffect(() => {
-    if (!open || !point) return;
+    if (!open || !hasPoint || initedRef.current) return;
+    initedRef.current = true;
     let cancelled = false;
-    (async () => {
+    const start = point!;
+    void (async () => {
       const AMap = (await loadAmap()) as any;
-      if (cancelled || !AMap || !containerRef.current) return;
+      if (cancelled || !AMap || !containerRef.current) {
+        initedRef.current = false;
+        return;
+      }
       try {
         const map = new AMap.Map(containerRef.current, {
           zoom,
-          center: [point.lon, point.lat],
+          center: [start.lon, start.lat],
           resizeEnable: true,
-        });
+});
         const marker = new AMap.Marker({
-          position: [point.lon, point.lat],
+          position: [start.lon, start.lat],
           draggable: true,
           cursor: "move",
         });
@@ -131,22 +142,28 @@ export function LocationFixDialog({
         markerRef.current = marker;
         setInteractive(true);
       } catch {
+        initedRef.current = false;
         setInteractive(false);
       }
     })();
     return () => {
       cancelled = true;
-      try {
-        amapRef.current?.destroy?.();
-      } catch {
-        /* ignore */
-      }
-      amapRef.current = null;
-      markerRef.current = null;
-      setInteractive(false);
     };
-    // 只喺开启对话框时建立一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasPoint]);
+
+  // 关闭对话框时清走地图实例
+  useEffect(() => {
+    if (open) return;
+    try {
+      amapRef.current?.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    amapRef.current = null;
+    markerRef.current = null;
+    initedRef.current = false;
+    setInteractive(false);
   }, [open]);
 
   // 互动地图存在时，选点变更（例如撳候选）同步过去
@@ -155,6 +172,7 @@ export function LocationFixDialog({
     markerRef.current?.setPosition?.([point.lon, point.lat]);
     amapRef.current?.setCenter?.([point.lon, point.lat]);
   }, [interactive, point]);
+
 
   // 静态图后备：跟住 center / zoom 载入
   useEffect(() => {
@@ -165,11 +183,13 @@ export function LocationFixDialog({
       void (async () => {
         try {
           const result = await getStaticMap({
-            data: { lat: center.lat, lon: center.lon, zoom },
+            data: { lat: center.lat, lon: center.lon, zoom, marker: false },
           });
           if (cancelled) return;
           setMapUrl(result.url);
+          setMapSize({ w: result.width ?? DEFAULT_W, h: result.height ?? DEFAULT_H });
           setMapFailed(!result.url);
+
         } catch {
           if (!cancelled) {
             setMapUrl(null);
@@ -239,15 +259,19 @@ export function LocationFixDialog({
 
   const draggingRef = useRef({ active: false, moved: false, x: 0, y: 0 });
 
+  /** 图片显示尺寸 ↔ 地图像素换算：图片係 object-fill，故此按容器阔高线性对应 */
+  const toMapPx = (rect: DOMRect, clientX: number, clientY: number) => ({
+    dx: ((clientX - rect.left) / rect.width - 0.5) * mapSize.w,
+    dy: ((clientY - rect.top) / rect.height - 0.5) * mapSize.h,
+  });
+
   /** 静态图：撳边度，针就去边度（唔会重新置中，方便肉眼对楼宇） */
   const pickOnMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!center || draggingRef.current.moved) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const dx = ((event.clientX - rect.left) / rect.width - 0.5) * SOURCE_W;
-    const dy = ((event.clientY - rect.top) / rect.height - 0.5) * SOURCE_H;
+    const { dx, dy } = toMapPx(rect, event.clientX, event.clientY);
     setPoint(offsetPoint(center, dx, dy, zoom));
   };
-
 
   const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
     draggingRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY };
@@ -264,7 +288,7 @@ export function LocationFixDialog({
     d.x = e.clientX;
     d.y = e.clientY;
     setCenter(
-      offsetPoint(center, (-dx / rect.width) * SOURCE_W, (-dy / rect.height) * SOURCE_H, zoom),
+      offsetPoint(center, (-dx / rect.width) * mapSize.w, (-dy / rect.height) * mapSize.h, zoom),
     );
   };
 
@@ -276,33 +300,51 @@ export function LocationFixDialog({
     }, 0);
   };
 
-  const zoomBy = useCallback(
-    (delta: number) => {
-      setZoom((z) => clampZoom(z + delta));
-    },
-    [],
-  );
+  const zoomBy = useCallback((delta: number) => {
+    setZoom((z) => clampZoom(z + delta));
+  }, []);
 
-  // 滚轮缩放（非 passive，先至可以阻止页面滚动）
+  /** 以游标为锚点缩放：游标下嘅位置保持唔郁 */
+  const zoomAtRef = useRef<(nextZoom: number, dx: number, dy: number) => void>(() => {});
+  zoomAtRef.current = (nextZoom, dx, dy) => {
+    const z = clampZoom(nextZoom);
+    if (!center || z === zoom) {
+      setZoom(z);
+      return;
+    }
+    // 游标喺旧 zoom 对应嘅地理点，喺新 zoom 之下要留返喺同一屏幕位置
+    const anchor = offsetPoint(center, dx, dy, zoom);
+    const a = project(anchor.lat, anchor.lon, z);
+    const nc = unproject(a.x - dx, a.y - dy, z);
+    setCenter({ lat: nc.lat, lon: nc.lon });
+    setZoom(z);
+  };
+
+  // 滚轮／触控板缩放（非 passive，先至可以阻止页面滚动同页面级 pinch）
   useEffect(() => {
-    const el = containerRef.current;
+    const el = overlayRef.current;
     if (!el || interactive) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      setZoom((z) => clampZoom(z - dy * 0.004));
+      const dyRaw = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      const rect = el.getBoundingClientRect();
+      const dx = ((e.clientX - rect.left) / rect.width - 0.5) * mapSize.w;
+      const dy = ((e.clientY - rect.top) / rect.height - 0.5) * mapSize.h;
+      zoomAtRef.current(zoom - dyRaw * 0.004, dx, dy);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [interactive, open]);
+  }, [interactive, open, mapUrl, zoom, mapSize.w, mapSize.h]);
+
 
   // 静态图上嘅针位（相对容器百分比）
   const markerPos = (() => {
     if (!center || !point) return null;
     const c = project(center.lat, center.lon, zoom);
     const p = project(point.lat, point.lon, zoom);
-    const left = 50 + ((p.x - c.x) / SOURCE_W) * 100;
-    const top = 50 + ((p.y - c.y) / SOURCE_H) * 100;
+    const left = 50 + ((p.x - c.x) / mapSize.w) * 100;
+    const top = 50 + ((p.y - c.y) / mapSize.h) * 100;
+
     if (left < -5 || left > 105 || top < -5 || top > 105) return null;
     return { left, top };
   })();
@@ -363,14 +405,16 @@ export function LocationFixDialog({
 
             {!interactive && (
               <div
+                ref={overlayRef}
                 className="absolute inset-0 select-none"
                 onMouseDown={onPointerDown}
                 onMouseMove={onPointerMove}
                 onMouseUp={endDrag}
                 onMouseLeave={endDrag}
                 onClick={pickOnMap}
-                style={{ cursor: mapUrl ? "crosshair" : "default" }}
+                style={{ cursor: mapUrl ? "crosshair" : "default", touchAction: "none" }}
               >
+
                 {mapUrl ? (
                   <>
                     <img
