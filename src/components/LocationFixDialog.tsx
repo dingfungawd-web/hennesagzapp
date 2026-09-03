@@ -162,8 +162,14 @@ export function LocationFixDialog({
           map.addControl(new AMap.ToolBar({ position: "RT", liteStyle: false }));
           map.addControl(new AMap.Scale());
         });
-        window.requestAnimationFrame(() => map.resize?.());
-        window.setTimeout(() => map.resize?.(), 180);
+        // 对话框有开场动画，容器尺寸会喺开头几百毫秒变动，多次 resize 先至唔会得半张图
+        [0, 120, 260, 500, 900, 1500].forEach((ms) =>
+          window.setTimeout(() => {
+            if (cancelled || amapRef.current !== map) return;
+            map.resize?.();
+            map.setCenter?.([start.lon, start.lat]);
+          }, ms),
+        );
       } catch (error) {
         console.error("高德互动地图初始化失败", error);
         setInteractive(false);
