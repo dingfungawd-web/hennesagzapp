@@ -162,8 +162,14 @@ export function LocationFixDialog({
           map.addControl(new AMap.ToolBar({ position: "RT", liteStyle: false }));
           map.addControl(new AMap.Scale());
         });
-        window.requestAnimationFrame(() => map.resize?.());
-        window.setTimeout(() => map.resize?.(), 180);
+        // 对话框有开场动画，容器尺寸会喺开头几百毫秒变动，多次 resize 先至唔会得半张图
+        [0, 120, 260, 500, 900, 1500].forEach((ms) =>
+          window.setTimeout(() => {
+            if (cancelled || amapRef.current !== map) return;
+            map.resize?.();
+            map.setCenter?.([start.lon, start.lat]);
+          }, ms),
+        );
       } catch (error) {
         console.error("高德互动地图初始化失败", error);
         setInteractive(false);
@@ -189,9 +195,16 @@ export function LocationFixDialog({
 
   useEffect(() => {
     if (!open || !interactive || !containerRef.current) return;
-    const observer = new ResizeObserver(() => amapRef.current?.resize?.());
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    const el = containerRef.current;
+    const onResize = () => amapRef.current?.resize?.();
+    const observer = new ResizeObserver(onResize);
+    observer.observe(el);
+    if (el.parentElement) observer.observe(el.parentElement);
+    window.addEventListener("resize", onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
   }, [open, interactive]);
 
   // 关闭对话框时清走地图实例
@@ -461,7 +474,7 @@ export function LocationFixDialog({
             <div ref={containerRef} className="absolute inset-0 h-full w-full cursor-grab" />
 
             {interactive && (
-              <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-background/80 px-2 py-1 text-[10px] text-muted-foreground">
+              <div className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-background/85 px-2 py-1 text-[10px] text-muted-foreground">
                 拖曳地图平移 · 拖曳红针改位置 · 滚轮或右上角控件缩放
               </div>
             )}
