@@ -110,17 +110,15 @@ export function LocationFixDialog({
 
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
-  const initedRef = useRef(false);
   useEffect(() => {
-    if (!open || lat == null || lon == null || initedRef.current) return;
-    initedRef.current = true;
+    if (!open || lat == null || lon == null) return;
     setInteractiveLoading(true);
     let cancelled = false;
+    let createdMap: any = null;
     const start = { lat: Number(lat), lon: Number(lon) };
     void (async () => {
       const AMap = (await loadAmap()) as any;
       if (cancelled || !AMap || !containerRef.current) {
-        initedRef.current = false;
         if (!cancelled) setInteractiveLoading(false);
         return;
       }
@@ -137,6 +135,7 @@ export function LocationFixDialog({
           viewMode: "2D",
           zooms: [3, 20],
         });
+        createdMap = map;
         const marker = new AMap.Marker({
           position: [start.lon, start.lat],
           draggable: true,
@@ -167,13 +166,23 @@ export function LocationFixDialog({
         window.setTimeout(() => map.resize?.(), 180);
       } catch (error) {
         console.error("高德互动地图初始化失败", error);
-        initedRef.current = false;
         setInteractive(false);
         setInteractiveLoading(false);
       }
     })();
     return () => {
       cancelled = true;
+      if (createdMap) {
+        try {
+          createdMap.destroy?.();
+        } catch {
+          /* ignore */
+        }
+        if (amapRef.current === createdMap) {
+          amapRef.current = null;
+          markerRef.current = null;
+        }
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, lat, lon, orderId]);
@@ -195,7 +204,6 @@ export function LocationFixDialog({
     }
     amapRef.current = null;
     markerRef.current = null;
-    initedRef.current = false;
     setInteractive(false);
     setInteractiveLoading(false);
   }, [open]);
