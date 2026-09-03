@@ -102,6 +102,7 @@ export function LocationFixDialog({
   const [mapSize, setMapSize] = useState({ w: DEFAULT_W, h: DEFAULT_H });
   const [mapLoading, setMapLoading] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
+  const [interactiveLoading, setInteractiveLoading] = useState(false);
   const [loadedView, setLoadedView] = useState<{
     center: { lat: number; lon: number };
     zoom: number;
@@ -109,17 +110,18 @@ export function LocationFixDialog({
 
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
-  const hasPoint = point != null;
   const initedRef = useRef(false);
   useEffect(() => {
-    if (!open || !hasPoint || initedRef.current) return;
+    if (!open || lat == null || lon == null || initedRef.current) return;
     initedRef.current = true;
+    setInteractiveLoading(true);
     let cancelled = false;
-    const start = point!;
+    const start = { lat: Number(lat), lon: Number(lon) };
     void (async () => {
       const AMap = (await loadAmap()) as any;
       if (cancelled || !AMap || !containerRef.current) {
         initedRef.current = false;
+        if (!cancelled) setInteractiveLoading(false);
         return;
       }
       try {
@@ -127,13 +129,27 @@ export function LocationFixDialog({
           zoom,
           center: [start.lon, start.lat],
           resizeEnable: true,
-});
+          dragEnable: true,
+          scrollWheel: true,
+          doubleClickZoom: true,
+          keyboardEnable: true,
+          animateEnable: false,
+          viewMode: "2D",
+          zooms: [3, 20],
+        });
         const marker = new AMap.Marker({
           position: [start.lon, start.lat],
           draggable: true,
           cursor: "move",
+          anchor: "bottom-center",
         });
         map.add(marker);
+        map.on("dragstart", () => {
+          containerRef.current?.classList.add("cursor-grabbing");
+        });
+        map.on("dragend", () => {
+          containerRef.current?.classList.remove("cursor-grabbing");
+        });
         marker.on("dragend", () => {
           const p = marker.getPosition();
           setPoint({ lat: p.getLat(), lon: p.getLng() });
@@ -141,16 +157,32 @@ export function LocationFixDialog({
         amapRef.current = map;
         markerRef.current = marker;
         setInteractive(true);
+        setInteractiveLoading(false);
+        AMap.plugin(["AMap.ToolBar", "AMap.Scale"], () => {
+          if (cancelled || amapRef.current !== map) return;
+          map.addControl(new AMap.ToolBar({ position: "RT", liteStyle: false }));
+          map.addControl(new AMap.Scale());
+        });
+        window.requestAnimationFrame(() => map.resize?.());
+        window.setTimeout(() => map.resize?.(), 180);
       } catch {
         initedRef.current = false;
         setInteractive(false);
+        setInteractiveLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, hasPoint]);
+  }, [open, lat, lon, orderId]);
+
+  useEffect(() => {
+    if (!open || !interactive || !containerRef.current) return;
+    const observer = new ResizeObserver(() => amapRef.current?.resize?.());
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [open, interactive]);
 
   // 关闭对话框时清走地图实例
   useEffect(() => {
@@ -164,6 +196,7 @@ export function LocationFixDialog({
     markerRef.current = null;
     initedRef.current = false;
     setInteractive(false);
+    setInteractiveLoading(false);
   }, [open]);
 
   // 互动地图存在时，选点变更（例如撳候选）同步过去；地图中心只喺拣候选时先跟住郁
@@ -416,7 +449,13 @@ export function LocationFixDialog({
         <div className="grid gap-3 md:grid-cols-[1fr_320px]">
           <div className="relative h-[62vh] min-h-[420px] w-full overflow-hidden rounded-lg border border-border bg-surface">
             {/* 高德 JS 地图容器；载入唔到就用下面嘅静态图 */}
-            <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+            <div ref={containerRef} className="absolute inset-0 h-full w-full cursor-grab" />
+
+            {interactive && (
+              <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-background/80 px-2 py-1 text-[10px] text-muted-foreground">
+                拖曳地图平移 · 拖曳红针改位置 · 滚轮或右上角控件缩放
+              </div>
+            )}
 
             {!interactive && (
               <div
@@ -453,7 +492,9 @@ export function LocationFixDialog({
                   </>
                 ) : (
                   <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-                    {mapLoading
+                    {interactiveLoading
+                      ? "正在载入高德互动地图…"
+                      : mapLoading
                       ? "地图载入中…"
                       : mapFailed
                         ? "地图暂时无法载入，请先选择右方候选地点"
@@ -515,7 +556,7 @@ export function LocationFixDialog({
                   <MapPin className="mt-0.5 size-3 shrink-0 text-primary" />
                   <span className="whitespace-pre-wrap break-words leading-snug">{c.formatted}</span>
                 </p>
-                <p className="mt-1 flex items-center gap-1.5">
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <Badge variant="outline" className="text-[10px]">
                     {c.district || "—"}
                   </Badge>
@@ -525,7 +566,7 @@ export function LocationFixDialog({
                   <span className="text-[10px] text-muted-foreground">
                     {c.source === "poi" ? "地点搜寻" : c.level || "地址解析"}
                   </span>
-                </p>
+                </div>
               </button>
             ))}
           </div>
