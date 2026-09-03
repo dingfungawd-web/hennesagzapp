@@ -474,7 +474,7 @@ export function LocationFixDialog({
             <div ref={containerRef} className="absolute inset-0 h-full w-full cursor-grab" />
 
             {interactive && (
-              <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-background/80 px-2 py-1 text-[10px] text-muted-foreground">
+              <div className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-background/85 px-2 py-1 text-[10px] text-muted-foreground">
                 拖曳地图平移 · 拖曳红针改位置 · 滚轮或右上角控件缩放
               </div>
             )}
