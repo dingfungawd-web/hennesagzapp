@@ -195,9 +195,16 @@ export function LocationFixDialog({
 
   useEffect(() => {
     if (!open || !interactive || !containerRef.current) return;
-    const observer = new ResizeObserver(() => amapRef.current?.resize?.());
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    const el = containerRef.current;
+    const onResize = () => amapRef.current?.resize?.();
+    const observer = new ResizeObserver(onResize);
+    observer.observe(el);
+    if (el.parentElement) observer.observe(el.parentElement);
+    window.addEventListener("resize", onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
   }, [open, interactive]);
 
   // 关闭对话框时清走地图实例
