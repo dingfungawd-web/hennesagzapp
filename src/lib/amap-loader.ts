@@ -47,7 +47,7 @@ export function loadAmap(): Promise<unknown | null> {
     const existing = document.querySelector<HTMLScriptElement>('script[data-amap-sdk="true"]');
     if (!existing) {
       const script = document.createElement("script");
-      script.dataset.amapSdk = "true";
+      script.dataset["amapSdk"] = "true";
       script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(jsKey)}`;
       script.async = true;
       document.head.appendChild(script);
