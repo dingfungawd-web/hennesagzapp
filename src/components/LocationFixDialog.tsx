@@ -165,7 +165,8 @@ export function LocationFixDialog({
         });
         window.requestAnimationFrame(() => map.resize?.());
         window.setTimeout(() => map.resize?.(), 180);
-      } catch {
+      } catch (error) {
+        console.error("高德互动地图初始化失败", error);
         initedRef.current = false;
         setInteractive(false);
         setInteractiveLoading(false);
