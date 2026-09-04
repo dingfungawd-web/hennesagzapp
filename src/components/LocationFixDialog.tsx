@@ -112,6 +112,13 @@ export function LocationFixDialog({
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
   useEffect(() => {
     if (!open || lat == null || lon == null) return;
+    // Lovable 编辑器预览使用临时 iframe 域名，高德 Web Key 无法逐个加入白名单。
+    // 预览环境直接使用由服务器 Key 提供的地图，发布后的正式域名仍使用 JS 互动地图。
+    if (window.location.hostname.endsWith("lovableproject.com")) {
+      setInteractive(false);
+      setInteractiveLoading(false);
+      return;
+    }
     setInteractiveLoading(true);
     let cancelled = false;
     let createdMap: any = null;
