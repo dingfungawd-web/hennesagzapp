@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { toast } from "sonner";
 import { Crosshair, MapPin, Minus, Plus, Search } from "lucide-react";
 import {
@@ -107,6 +107,13 @@ export function LocationFixDialog({
     center: { lat: number; lon: number };
     zoom: number;
   } | null>(null);
+  const centerRef = useRef(center);
+  const pointRef = useRef(point);
+  const zoomRef = useRef(zoom);
+
+  centerRef.current = center;
+  pointRef.current = point;
+  zoomRef.current = zoom;
 
 
   // 尝试用高德 JS API 嵌入真互动地图；失败（例如域名白名单）就用静态图后备。
@@ -372,8 +379,12 @@ export function LocationFixDialog({
     setCenter({ lat: c.lat, lon: c.lon });
   };
 
-  const draggingRef = useRef({ active: false, x: 0, y: 0 });
-  const pinDragRef = useRef(false);
+  const draggingRef = useRef<{
+    mode: "map" | "pin" | null;
+    pointerId: number | null;
+    x: number;
+    y: number;
+  }>({ mode: null, pointerId: null, x: 0, y: 0 });
 
   /** 图片显示尺寸 ↔ 地图像素换算：图片係 object-fill，故此按容器阔高线性对应 */
   const toMapPx = (rect: DOMRect, clientX: number, clientY: number) => ({
@@ -381,34 +392,49 @@ export function LocationFixDialog({
     dy: ((clientY - rect.top) / rect.height - 0.5) * mapSize.h,
   });
 
-  const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
-    if (pinDragRef.current) return;
-    draggingRef.current = { active: true, x: e.clientX, y: e.clientY };
+  const onMapPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    draggingRef.current = {
+      mode: "map",
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+    };
+    e.currentTarget.style.cursor = "grabbing";
   };
 
-  const onPointerMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!center) return;
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const currentCenter = centerRef.current;
+    if (!currentCenter) return;
+    const drag = draggingRef.current;
+    if (drag.pointerId !== e.pointerId || !drag.mode) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    if (pinDragRef.current) {
+    if (drag.mode === "pin") {
       const { dx, dy } = toMapPx(rect, e.clientX, e.clientY);
-      setPoint(offsetPoint(center, dx, dy, zoom));
+      setPoint(offsetPoint(currentCenter, dx, dy, zoomRef.current));
       return;
     }
-    const d = draggingRef.current;
-    if (!d.active) return;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) < 2) return;
-    d.x = e.clientX;
-    d.y = e.clientY;
-    setCenter(
-      offsetPoint(center, (-dx / rect.width) * mapSize.w, (-dy / rect.height) * mapSize.h, zoom),
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    const nextCenter = offsetPoint(
+      currentCenter,
+      (-dx / rect.width) * mapSize.w,
+      (-dy / rect.height) * mapSize.h,
+      zoomRef.current,
     );
+    centerRef.current = nextCenter;
+    setCenter(nextCenter);
   };
 
-  const endDrag = () => {
-    draggingRef.current.active = false;
-    pinDragRef.current = false;
+  const endDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (draggingRef.current.pointerId !== e.pointerId) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    draggingRef.current = { mode: null, pointerId: null, x: 0, y: 0 };
+    e.currentTarget.style.cursor = mapUrl ? "grab" : "default";
   };
 
   const zoomBy = useCallback((delta: number) => {
@@ -449,28 +475,26 @@ export function LocationFixDialog({
 
 
   /** 未等到新图返嚟之前，用 CSS transform 即时预览缩放／平移，减少「反应慢」感觉 */
-  const imgTransform = (() => {
+  const mapLayerTransform = (() => {
     if (!center || !loadedView) return undefined;
     const scale = 2 ** (zoom - loadedView.zoom);
-    const c = project(center.lat, center.lon, zoom);
-    const l = project(loadedView.center.lat, loadedView.center.lon, zoom);
-    const tx = l.x - c.x;
-    const ty = l.y - c.y;
+    const c = project(center.lat, center.lon, loadedView.zoom);
+    const l = project(loadedView.center.lat, loadedView.center.lon, loadedView.zoom);
+    const tx = -(c.x - l.x) * scale;
+    const ty = -(c.y - l.y) * scale;
     if (scale === 1 && tx === 0 && ty === 0) return undefined;
-    // 图片係 object-fill 拉伸到容器大细，translate 用百分比先会同容器同步，
-    // 否则拖曳时地图影像同定位针会走位（睇落似针跟住郁）
     return `translate(${(tx / mapSize.w) * 100}%, ${(ty / mapSize.h) * 100}%) scale(${scale})`;
   })();
 
-  // 静态图上嘅针位（相对容器百分比）
+  // 定位针同地图图片一齐放入同一个图层，以已载入地图为基准。
+  // 拖曳地图只会改变视窗中心，绝不会改动 point 座标；只有直接拖针先会改 point。
   const markerPos = (() => {
-    if (!center || !point) return null;
-    const c = project(center.lat, center.lon, zoom);
-    const p = project(point.lat, point.lon, zoom);
+    if (!loadedView || !point) return null;
+    const c = project(loadedView.center.lat, loadedView.center.lon, loadedView.zoom);
+    const p = project(point.lat, point.lon, loadedView.zoom);
     const left = 50 + ((p.x - c.x) / mapSize.w) * 100;
     const top = 50 + ((p.y - c.y) / mapSize.h) * 100;
 
-    if (left < -5 || left > 105 || top < -5 || top > 105) return null;
     return { left, top };
   })();
 
@@ -538,34 +562,47 @@ export function LocationFixDialog({
               <div
                 ref={overlayRef}
                 className="absolute inset-0 select-none"
-                onMouseDown={onPointerDown}
-                onMouseMove={onPointerMove}
-                onMouseUp={endDrag}
-                onMouseLeave={endDrag}
+                onPointerDown={onMapPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
                 style={{ cursor: mapUrl ? "grab" : "default", touchAction: "none" }}
               >
 
                 {mapUrl ? (
                   <>
-                    <img
-                      src={mapUrl}
-                      alt="订单定位地图"
-                      draggable={false}
-                      className="pointer-events-none h-full w-full object-fill"
-                      style={{ transform: imgTransform, transformOrigin: "center center" }}
-                    />
-                    {markerPos && (
-                      <MapPin
-                        role="button"
-                        aria-label="拖曳移动定位针"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          pinDragRef.current = true;
-                        }}
-                        className="absolute size-9 -translate-x-1/2 -translate-y-full cursor-move fill-primary text-primary drop-shadow"
-                        style={{ left: `${markerPos.left}%`, top: `${markerPos.top}%` }}
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{ transform: mapLayerTransform, transformOrigin: "center center" }}
+                    >
+                      <img
+                        src={mapUrl}
+                        alt="订单定位地图"
+                        draggable={false}
+                        className="h-full w-full object-fill"
                       />
-                    )}
+                      {markerPos && (
+                        <MapPin
+                          role="button"
+                          aria-label="拖曳移动定位针"
+                          onPointerDown={(e) => {
+                            if (e.button !== 0) return;
+                            e.stopPropagation();
+                            const overlay = overlayRef.current;
+                            if (!overlay) return;
+                            overlay.setPointerCapture(e.pointerId);
+                            draggingRef.current = {
+                              mode: "pin",
+                              pointerId: e.pointerId,
+                              x: e.clientX,
+                              y: e.clientY,
+                            };
+                          }}
+                          className="pointer-events-auto absolute size-9 -translate-x-1/2 -translate-y-full cursor-move fill-primary text-primary drop-shadow"
+                          style={{ left: `${markerPos.left}%`, top: `${markerPos.top}%` }}
+                        />
+                      )}
+                    </div>
                   </>
                 ) : (
                   <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
