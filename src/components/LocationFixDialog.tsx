@@ -115,6 +115,7 @@ export function LocationFixDialog({
     setInteractiveLoading(true);
     let cancelled = false;
     let createdMap: any = null;
+    let restoreConsole = () => {};
     const start = { lat: Number(lat), lon: Number(lon) };
     void (async () => {
       const AMap = (await loadAmap()) as any;
@@ -123,6 +124,39 @@ export function LocationFixDialog({
         return;
       }
       try {
+        // 高德遇到 Web Key 域名白名单错误时只写 console，仍会建立一个空白地图实例。
+        // 暂时监听该错误并自动转用静态地图，避免用户只见白画面。
+        const originalConsoleError = console.error;
+        let restored = false;
+        const restore = () => {
+          if (restored) return;
+          restored = true;
+          console.error = originalConsoleError;
+        };
+        restoreConsole = restore;
+        console.error = (...args: unknown[]) => {
+          originalConsoleError(...args);
+          const message = args
+            .map((arg) => (arg instanceof Error ? arg.message : String(arg)))
+            .join(" ");
+          if (!message.includes("INVALID_USER_DOMAIN") || cancelled) return;
+          window.setTimeout(() => {
+            if (cancelled) return;
+            try {
+              createdMap?.destroy?.();
+            } catch {
+              /* ignore */
+            }
+            amapRef.current = null;
+            markerRef.current = null;
+            setInteractive(false);
+            setInteractiveLoading(false);
+            restore();
+            toast.error("高德 Web Key 未授权当前网址，已自动切换地图预览");
+          }, 0);
+        };
+        window.setTimeout(restore, 5_000);
+
         const map = new AMap.Map(containerRef.current, {
           zoom,
           center: [start.lon, start.lat],
@@ -157,6 +191,19 @@ export function LocationFixDialog({
         markerRef.current = marker;
         setInteractive(true);
         setInteractiveLoading(false);
+        map.on?.("error", () => {
+          if (cancelled) return;
+          try {
+            map.destroy?.();
+          } catch {
+            /* ignore */
+          }
+          amapRef.current = null;
+          markerRef.current = null;
+          setInteractive(false);
+          setInteractiveLoading(false);
+          restore();
+        });
         AMap.plugin(["AMap.ToolBar", "AMap.Scale"], () => {
           if (cancelled || amapRef.current !== map) return;
           map.addControl(new AMap.ToolBar({ position: "RT", liteStyle: false }));
@@ -178,6 +225,7 @@ export function LocationFixDialog({
     })();
     return () => {
       cancelled = true;
+      restoreConsole();
       if (createdMap) {
         try {
           createdMap.destroy?.();
